@@ -1,0 +1,16 @@
+.git
+*.tar.gz
+*.pyc
+__pycache__
+/bin
+/ext/*.sh
+/ext/*/.git
+/ext/*/data
+/ext/*/test*
+/ext/ncbi-blast
+!/ext/ncbi-blast/bin/blastn
+!/ext/ncbi-blast/bin/makeblastdb
+/ext/fastqc/Help
+/scripts
+/src/*/build
+/test*

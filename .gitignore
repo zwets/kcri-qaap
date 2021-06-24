@@ -1,0 +1,6 @@
+/test/output
+/tmp
+*.pyc
+*.pyo
+*~
+*.log
