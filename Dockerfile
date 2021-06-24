@@ -19,7 +19,7 @@ FROM continuumio/miniconda3:4.9.2
 # Debian packages
 # - g++ and the libboost packages for SKESA
 # - default-jre for FastQC and Trimmomatic (and the mkdir for it)
-# - ldc and cpanminus for FastQ-Screen
+# - bowtie2, samtools, gd-graph for FastQ-Screen
 # - trf for KneadData
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -37,7 +37,7 @@ RUN apt-get -qq update --fix-missing && \
         libboost-timer-dev \
         libboost-chrono-dev \
         libboost-system-dev \
-        ldc cpanminus \
+        bowtie2 samtools libgd-graph-perl \
     && \
     apt-get -qq clean && \
     rm -rf /var/lib/apt/lists/*
@@ -99,7 +99,7 @@ ENV PATH=/usr/src/ext/unfasta:$PATH
 # Make and install skesa
 RUN cd ext/skesa && \
     make clean && make -f Makefile.nongs && \
-    mv skesa /usr/local/bin/ && \
+    cp skesa /usr/local/bin/ && \
     cd .. && rm -rf skesa
 
 # Install fastq-stats
@@ -107,6 +107,48 @@ RUN cd ext/fastq-utils && \
     make clean && make fastq-stats && \
     cp fastq-stats /usr/local/bin/ && \
     cd .. && rm -rf fastq-utils
+
+# Install trimmomatic (the weird awk is to force eol on last line of fa)
+RUN cd ext/trimmomatic && \
+    awk 1 adapters/NexteraPE-PE.fa adapters/TruSeq3-PE-2.fa >Nextera_and_TruSeq3-PE.fa && \
+    printf '#!/bin/sh\nexec java -jar /usr/src/ext/trimmomatic/%s "$@"\n' $(ls *.jar) \
+    > /usr/local/bin/trimmomatic && \
+    chmod +x /usr/local/bin/trimmomatic
+
+# Install fastqc by symlinking
+RUN cd ext/fastqc && \
+    chmod +x fastqc && \
+    ln -sft /usr/local/bin /usr/src/ext/fastqc/fastqc
+
+# Install fastq-screen by adding it to the PATH
+ENV PATH=/usr/src/ext/fastq-screen:$PATH
+
+# Install kneaddata
+RUN cd ext/kneaddata && \
+    python setup.py install --bypass-dependencies-install && \
+    rm -rf build
+
+# Install spades
+RUN cd ext/spades && \
+    bin/spades.py --test && \
+    rm -rf spades_test
+
+ENV PATH=/usr/src/ext/spades/bin:$PATH
+
+# Install spades-uni (old version for Unicycler, pass with --spades_path)
+RUN cd ext/spades-uni && \
+    bin/spades.py --test && \
+    rm -rf spades_test
+
+# Install pilon (for unicycler)
+RUN printf '#!/bin/sh\nexec java -Xmx16G -jar /usr/share/java/pilon.jar "$@"\n' \
+    > /usr/local/bin/pilon && \
+    chmod +x /usr/local/bin/pilon
+
+# Install unicycler
+RUN cd ext/unicycler && \
+    python setup.py install && \
+    rm -rf build
 
 # Install the picoline module
 RUN cd ext/picoline && \

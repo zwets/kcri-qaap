@@ -81,6 +81,30 @@ grep -E '^ *[^#]' "$CFG_FILE" | while read NAME VER URL REST; do
         [ "$GIT_NEW" = "$VER" ] || printf ' = %s' "$GIT_NEW"
         [ "$GIT_NEW" = "$GIT_MASTER" ] || printf ' (master is %s)' "$GIT_MASTER"
 
+    elif [ -z "${URL#*.jar}" ]; then  # straight download
+
+        DIR="$BASE_DIR/$NAME"
+        [ -d "$DIR" ] || mkdir -p "$DIR"
+
+        CUR_VER="$(cat "$DIR/.qaap_version_crumb" 2>/dev/null)" || CUR_VER="(none)"
+
+        if [ "$CUR_VER" = "$VER" ]; then
+            printf '%s' "$VER"
+        else
+            printf '%s -> %s ' "$CUR_VER" "$VER"
+
+            DL_URL="$(echo "$URL" | sed -e "s/@VERSION@/$VER/g")"
+            FILE="$BASE_DIR/$(basename "$DL_URL")"
+            wget -qO "$FILE" -c "$DL_URL" || err_exit "failed to download: $DL_URL"
+
+            # Move the file (with arbitrary name) to plain NAME.EXT
+            EXT="${FILE##*.}"
+            mv -T "$FILE" "$DIR/$NAME.$EXT" || err_exit "failed to move to $NAME.$EXT: $FILE"
+
+            # Leave our version crumb, so we remember what it is
+            echo "$VER" >"$DIR/.qaap_version_crumb"
+        fi
+
     else # tarball or zip
 
         DIR="$BASE_DIR/$NAME"
