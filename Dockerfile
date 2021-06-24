@@ -18,7 +18,7 @@ FROM continuumio/miniconda3:4.9.2
 
 # Debian packages
 # - g++ and the libboost packages for SKESA
-# - default-jre for FastQC and Trimmomatic
+# - default-jre for FastQC and Trimmomatic (and the mkdir for it)
 # - ldc and cpanminus for FastQ-Screen
 # - trf for KneadData
 
@@ -26,10 +26,11 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get -qq update --fix-missing && \
     apt-get -qq install apt-utils && \
     dpkg --configure -a && \
+    mkdir /usr/share/man/man1 && \
     apt-get -qq install --no-install-recommends \
         make g++ libz-dev \
+        default-jre-headless \
         gawk \
-	default-jre-headless \
         libboost-program-options-dev \
         libboost-iostreams-dev \
         libboost-regex-dev \
@@ -55,28 +56,24 @@ RUN echo "unset HISTFILE" >>/etc/bash.bashrc && \
 #   use it, it's huge, and it is non-free (why does Conda pick it?)
 # - Picoline requires psutil
 # - trf for fastq-screen, is not in Debian
-# - multiqc (may need add channel bioconda?)
-
-RUN conda install \
-        nomkl \
-        trf \
-        multiqc \
-	psutil && \
-    conda list && \
-    conda clean -qy --tarballs
-
-
-# Other dependencies
-# ----------------------------------------------------------------------
-
-# SKESA, BLAST, Quast are available in the 'bioconda' channel, but yield
-# myriad dependency conflicts, hence we install them from source.
 
 #RUN conda config --add channels bioconda && \
 #    conda config --add channels defaults && \
 #    conda config --set channel_priority strict && \
-#    conda update --all && \
-#    conda install blast skesa quast
+RUN conda install \
+        nomkl \
+        psutil && \
+    conda list && \
+    conda clean -qy --tarballs
+
+# Python dependencies via pip
+# - These are in Conda, but dependency issues when installingg
+RUN pip install \
+        trf \
+        multiqc
+
+# SKESA, BLAST, Quast are available in the 'bioconda' channel, but yield
+# myriad dependency conflicts, hence we install them from source.
 
 
 # Install External Deps
@@ -104,23 +101,6 @@ RUN cd ext/skesa && \
     make clean && make -f Makefile.nongs && \
     mv skesa /usr/local/bin/ && \
     cd .. && rm -rf skesa
-
-## Make and install kcst
-#RUN cd ext/kcst/src && \
-#    make clean && make && \
-#    mv khc ../bin/kcst ../data/make-kcst-db.sh /usr/local/bin/ && \
-#    cd ../.. && rm -rf kcst
-
-## Make and install kma
-#RUN cd ext/kma && \
-#    make clean && make && \
-#    cp kma kma_index kma_shm /usr/local/bin/ && \
-#    cd .. && rm -rf kma
-
-## Install kma-retrieve
-#RUN cd ext/odds-and-ends && \
-#    cp kma-retrieve /usr/local/bin/ && \
-#    cd .. && rm -rf odds-and-ends
 
 # Install fastq-stats
 RUN cd ext/fastq-utils && \

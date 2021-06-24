@@ -7,10 +7,13 @@ __pycache__
 /ext/*/.git
 /ext/*/data
 /ext/*/test*
+/ext/fastqc/Help
 /ext/ncbi-blast
 !/ext/ncbi-blast/bin/blastn
+!/ext/ncbi-blast/bin/tblastn
 !/ext/ncbi-blast/bin/makeblastdb
-/ext/fastqc/Help
+/ext/quast/quast_libs/site_packages/joblib2
+/ext/quast/quast_libs/site_packages/simplejson
 /scripts
 /src/*/build
 /test*

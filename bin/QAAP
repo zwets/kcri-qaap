@@ -62,7 +62,7 @@ while [ $# -ge 1 ]; do
     -r|--ref*)     REF_FILE="$2"; shift 2 ;;
     --out-dir=*)   OUT_DIR="${1##--out-dir=}"; shift ;;
     -o|--out-dir)  OUT_DIR="$2"; shift 2 ;;
-    -d|--db-root*) err_exit "set QAAP_DB_DIR instead of parameter -d/--db-root when dockerised" ;;
+    -d|--db-dir*)  err_exit "set QAAP_DB_DIR instead of parameter -d/--db-dir when dockerised" ;;
     --*=*|-h|--help|-v|--verbose|-l|--list-*)  # The currently known no-arg flags
         append_arg "$1"
         shift ;;
@@ -137,4 +137,4 @@ while [ $# -ge 1 ]; do
 done
 
 # Execute the collected command line, note we use eval to dequote the args
-eval exec "$(dirname "$(realpath -e "$0")")/bap-container-run" $CMD_LINE
+eval exec "$(dirname "$(realpath -e "$0")")/qaap-container-run" $CMD_LINE

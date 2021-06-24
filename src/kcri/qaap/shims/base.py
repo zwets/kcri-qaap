@@ -122,8 +122,8 @@ class ServiceExecution(Execution):
         return self.get_user_input('verbose', False)
 
     def get_db_path(self, db_name, default=None):
-        '''Return the path to db_name under db_root, fail if not a dir.'''
-        db_path = os.path.join(self._blackboard.get_db_root(), db_name)
+        '''Return the path to db_name under db_dir, fail if not a dir.'''
+        db_path = os.path.join(self._blackboard.get_db_dir(), db_name)
         if not os.path.isdir(db_path):
             raise UserException("database path not found: %s", db_path)
         return db_path

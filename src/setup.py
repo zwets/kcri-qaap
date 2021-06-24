@@ -29,7 +29,7 @@ setup(
     python_requires = REQUIRES_PYTHON,
     url = URL,
     packages = find_packages(exclude=["tests"]),
-    entry_points={ 'console_scripts': [ 'QAAP = kcri.bap.QAAP:main' ] },
+    entry_points={ 'console_scripts': [ 'QAAP = kcri.qaap.QAAP:main' ] },
     install_requires = REQUIRED,
     extras_require = EXTRAS,
     include_package_data = True,

@@ -76,7 +76,7 @@ per line, in a text file and pass this file with @FILENAME.
     group.add_argument('-o', '--out-dir',  metavar='PATH', default='.', help="directory to write output to, will be created (relative to PWD when dockerised)")
     group.add_argument('-l', '--list-targets',  action='store_true', help="list the available targets")
     group.add_argument('-s', '--list-services', action='store_true', help="list the available services")
-    group.add_argument('-d', '--db-root',  metavar='PATH', default='/databases', help="base path to service databases (leave default when dockerised)")
+    group.add_argument('-d', '--db-dir',  metavar='PATH', default='/databases', help="base path to service databases (leave default when dockerised)")
     group.add_argument('-v', '--verbose',  action='store_true', help="write verbose output to stderr")
     group.add_argument('files', metavar='FILE', nargs='*', default=[], help="input file(s) in optionally gzipped FASTA or fastq format")
 
@@ -151,10 +151,10 @@ per line, in a text file and pass this file with @FILENAME.
         else:
             sys.exit(0)
 
-    # Check existence of the db_root directory
-    if not os.path.isdir(args.db_root):
-        err_exit('no such directory for --db-root: %s', args.db_root)
-    db_root = os.path.abspath(args.db_root)
+    # Check existence of the db_dir directory
+    if not os.path.isdir(args.db_dir):
+        err_exit('no such directory for --db-dir: %s', args.db_dir)
+    db_dir = os.path.abspath(args.db_dir)
 
     # Now that path handling has been done, and all file references made,
     # we can safely change the base working directory to out-dir.
@@ -193,7 +193,7 @@ per line, in a text file and pass this file with @FILENAME.
     # Set up the Workflow execution
     blackboard = QAAPBlackboard(args.verbose)
     blackboard.start_run(SERVICE, VERSION, vars(args))
-    blackboard.put_db_root(db_root)
+    blackboard.put_db_dir(db_dir)
     blackboard.put_sample_id(sample_id)
 
     # Set platform and pairing defaults when fastqs are present

@@ -64,18 +64,18 @@ class QAAPBlackboard(Blackboard):
 
     # Standard methods for QAAP common data
 
-    def put_db_root(self, path):
-        '''Stores the root of the QAAP services databases.'''
-        self.put_user_input('db_root', path)
+    def put_db_dir(self, path):
+        '''Stores the QAAP services databases dir.'''
+        self.put_user_input('db_dir', path)
 
-    def get_db_root(self):
-        '''Retrieve the user_input/db_root, this must be set.'''
-        db_root = self.get_user_input('db_root')
-        if not db_root:
-            raise Exception("database root path is not set")
-        elif not os.path.isdir(db_root):
-            raise Exception("db root path is not a directory: %s" % db_root)
-        return os.path.abspath(db_root)
+    def get_db_dir(self):
+        '''Retrieve the user_input/db_dir, this must be set.'''
+        db_dir = self.get_user_input('db_dir')
+        if not db_dir:
+            raise Exception("database dir path is not set")
+        elif not os.path.isdir(db_dir):
+            raise Exception("db dir path is not a directory: %s" % db_dir)
+        return os.path.abspath(db_dir)
 
     # Sample ID
 
