@@ -60,8 +60,10 @@ RUN echo "unset HISTFILE" >>/etc/bash.bashrc && \
 #RUN conda config --add channels bioconda && \
 #    conda config --add channels defaults && \
 #    conda config --set channel_priority strict && \
-RUN conda install \
+RUN conda config --add channels bioconda && \
+    conda install \
         nomkl \
+        trf \
         psutil && \
     conda list && \
     conda clean -qy --tarballs
@@ -69,7 +71,6 @@ RUN conda install \
 # Python dependencies via pip
 # - These are in Conda, but dependency issues when installingg
 RUN pip install \
-        trf \
         multiqc
 
 # SKESA, BLAST, Quast are available in the 'bioconda' channel, but yield
@@ -110,7 +111,7 @@ RUN cd ext/fastq-utils && \
 
 # Install trimmomatic (the weird awk is to force eol on last line of fa)
 RUN cd ext/trimmomatic && \
-    awk 1 adapters/NexteraPE-PE.fa adapters/TruSeq3-PE-2.fa >Nextera_and_TruSeq3-PE.fa && \
+    awk 1 adapters/NexteraPE-PE.fa adapters/TruSeq3-PE-2.fa >adapters/default-PE.fa && \
     printf '#!/bin/sh\nexec java -jar /usr/src/ext/trimmomatic/%s "$@"\n' $(ls *.jar) \
     > /usr/local/bin/trimmomatic && \
     chmod +x /usr/local/bin/trimmomatic
@@ -141,7 +142,7 @@ RUN cd ext/spades-uni && \
     rm -rf spades_test
 
 # Install pilon (for unicycler)
-RUN printf '#!/bin/sh\nexec java -Xmx16G -jar /usr/share/java/pilon.jar "$@"\n' \
+RUN printf '#!/bin/sh\nexec java -Xmx16G -jar /usr/src/ext/pilon/pilon.jar "$@"\n' \
     > /usr/local/bin/pilon && \
     chmod +x /usr/local/bin/pilon
 
@@ -154,6 +155,12 @@ RUN cd ext/unicycler && \
 RUN cd ext/picoline && \
     python3 setup.py install && \
     cd .. && rm -rf picoline
+
+# Install the Illumina interop tools (MultiQC parses these)
+RUN cd ext/interop && \
+    cp bin/summary /usr/local/bin/interop_summary && \
+    cp bin/index-summary /usr/local/bin/interop_index-summary && \
+    cd .. && rm -rf interop
 
 
 # Install the QAAP code

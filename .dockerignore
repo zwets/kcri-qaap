@@ -8,6 +8,9 @@ __pycache__
 /ext/*/data
 /ext/*/test*
 /ext/fastqc/Help
+/ext/interop
+!/ext/interop/bin/summary
+!/ext/interop/bin/index-summary
 /ext/ncbi-blast
 !/ext/ncbi-blast/bin/blastn
 !/ext/ncbi-blast/bin/tblastn
