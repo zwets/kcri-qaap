@@ -10,20 +10,6 @@ from datetime import datetime
 from pico.workflow.blackboard import Blackboard
 
 
-### Enums
-#
-#   Define enums for supported sequencing platform, read pairing.
-
-class SeqPlatform(enum.Enum):
-    ILLUMINA = 'Illumina'
-    NANOPORE = 'Nanopore'
-    PACBIO = 'PacBio'
-
-class SeqPairing(enum.Enum):
-    PAIRED = 'paired'
-    UNPAIRED = 'unpaired'
-    MATE_PAIRED = 'mate-paired'
-
 ### QAAPBlackboard class
 #
 #   Wraps the generic Blackboard with an API that adds getters and putters for
@@ -77,52 +63,28 @@ class QAAPBlackboard(Blackboard):
             raise Exception("db dir path is not a directory: %s" % db_dir)
         return os.path.abspath(db_dir)
 
-    # Sample ID
+    # Inputs: single_fqs, paired_fqs, fastas
 
-    def put_sample_id(self, id):
-        '''Store id as the sample id in the summary.'''
-        self.put('qaap/summary/sample_id', id)
+    def put_single_fqs(self, dic):
+        '''Stores the single fastqs dict as its own (pseudo) user input.'''
+        self.put_user_input('single_fqs', dic)
 
-    def get_sample_id(self):
-        return self.get('qaap/summary/sample_id', 'unknown')
+    def get_single_fqs(self, default=None):
+        return self.get_user_input('single_fqs', default)
 
-    # Sequencing specs
+    def put_paired_fqs(self, dic):
+        '''Stores the paired fastqs dict as its own (pseudo) user input.'''
+        self.put_user_input('paired_fqs', dic)
 
-    def put_seq_platform(self, platform):
-        '''Stores the sequencing platform as its own (pseudo) user input.'''
-        assert isinstance(platform, SeqPlatform)
-        self.put_user_input('seq_platform', platform.value)
+    def get_paired_fqs(self, default=None):
+        return self.get_user_input('paired_fqs', default)
 
-    def get_seq_platform(self, default=None):
-        '''Returns the stored platform as SeqPlatform enum value.'''
-        s = self.get_user_input('seq_platform')
-        return SeqPlatform(s) if s else default
+    def put_fastas(self, dic):
+        '''Stores the fastas dict as its own (pseudo) user input.'''
+        self.put_user_input('fastas', path)
 
-    def put_seq_pairing(self, pairing):
-        '''Stores the sequencing pairing as its own (pseudo) user input.'''
-        assert isinstance(pairing, SeqPairing)
-        self.put_user_input('seq_pairing', pairing.value)
-
-    def get_seq_pairing(self, default=None):
-        '''Returns the stored pairing as SeqPairing enum value.'''
-        s = self.get_user_input('seq_pairing')
-        return SeqPairing(s) if s else default
-
-    # Contigs and reads
-
-    def put_fastq_paths(self, paths):
-        '''Stores the fastqs path as its own (pseudo) user input.'''
-        self.put_user_input('fastqs', paths)
-
-    def get_fastq_paths(self, default=None):
-        return self.get_user_input('fastqs', default)
-
-    def put_contigs_path(self, path):
-        '''Stores the contigs path as its own (pseudo) user input.'''
-        self.put_user_input('contigs', path)
-
-    def get_contigs_path(self, default=None):
-        return self.get_user_input('contigs', default)
+    def get_fastas(self, default=None):
+        return self.get_user_input('fastas', default)
 
     # Reference
 

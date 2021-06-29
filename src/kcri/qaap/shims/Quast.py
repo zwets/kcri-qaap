@@ -6,7 +6,6 @@
 import os, csv, logging
 from pico.workflow.executor import Execution
 from pico.jobcontrol.job import JobSpec, Job
-from ..data import SeqPlatform, SeqPairing
 from .base import ServiceExecution, UserException
 from .versions import DEPS_VERSIONS
 
@@ -53,36 +52,23 @@ class QuastShim:
             if ref:
                 params.extend(['-r', os.path.abspath(ref)])
 
-            # Append reads if we have them
-            fastqs = execution.get_fastq_paths(list())
-            if fastqs:
+#            # Append reads if we have them - only when one FASTA?
+#            pairs = execution.get_paired_fqs(dict())
+#            if pairs:
+#                params.extend(['--pe1', fastqs[0], '--pe2', fastqs[1]])
+#
+#                if len(fastqs) == 2:
+#                    if execution.is_seq_pairing(SeqPairing.PAIRED):
+#                elif len(fastqs) == 1:
+#                    elif execution.is_seq_pairing(SeqPairing.UNPAIRED):
+#                        params.extend(['--single', fastqs[0]])
+#                    else:
+#                        raise Exception("read pairing must be known for Quast with a single FASTQ files")
+#                else:
+#                    raise Exception("Quast cannot make sense of more than 2 reads files")
 
-                if len(fastqs) == 2:
-                    if execution.is_seq_pairing(SeqPairing.PAIRED):
-                        params.extend(['--pe1', fastqs[0], '--pe2', fastqs[1]])
-                    elif execution.is_seq_pairing(SeqPairing.MATE_PAIRED):
-                        params.extend(['--mp1', fastqs[0], '--mp2', fastqs[1]])
-                    else:
-                        raise Exception("read pairing must be known for Quast with two FASTQ files")
-                elif len(fastqs) == 1:
-                    if execution.is_seq_pairing(SeqPairing.PAIRED):
-                        params.extend(['--pe12', fastqs[0]])
-                    elif execution.is_seq_pairing(SeqPairing.MATE_PAIRED):
-                        params.extend(['--mp12', fastqs[0]])
-                    elif execution.is_seq_pairing(SeqPairing.UNPAIRED):
-                        params.extend(['--single', fastqs[0]])
-                    else:
-                        raise Exception("read pairing must be known for Quast with a single FASTQ files")
-                else:
-                    raise Exception("Quast cannot make sense of more than 2 reads files")
-
-                # And specify the platform
-                if execution.is_seq_platform(SeqPlatform.NANOPORE):
-                    params.append('--nanopore')
-                elif execution.is_seq_platform(SeqPlatform.PACBIO):
-                    params.append('--pacbio')
-
-            params.append(os.path.abspath(execution.get_contigs_path()))
+            params.append('--labels', fastas.keys())
+            params.append(fastas.values())
 
             job_spec = JobSpec('quast.py', params, MAX_CPU, MAX_MEM, MAX_SPC, MAX_TIM)
             execution.store_job_spec(job_spec.as_dict())
