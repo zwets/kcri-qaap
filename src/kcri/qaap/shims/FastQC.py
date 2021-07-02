@@ -3,20 +3,15 @@
 # kcri.qaap.shims.FastQC - service shim to the FastQC backend
 #
 
-import os, csv, logging
+import os, logging
 from pico.workflow.executor import Execution
 from pico.jobcontrol.job import JobSpec, Job
 from .base import ServiceExecution, UserException
 from .versions import DEPS_VERSIONS
+from ..workflow import Services
 
 # Our service name and current backend version
-SERVICE, VERSION = "FastQC", '0.11.9' #DEPS_VERSIONS['0.11.9']
-
-# Backend resource parameters: cpu, memory, disk, run time reqs
-MAX_CPU = 2
-MAX_MEM = 1
-MAX_SPC = 1
-MAX_TIM = 5 * 60
+SERVICE, VERSION = "FastQC", DEPS_VERSIONS['fastqc']
 
 
 class FastQCShim:
@@ -25,24 +20,36 @@ class FastQCShim:
     def execute(self, ident, blackboard, scheduler):
         '''Invoked by the executor.  Creates, starts and returns the Execution.'''
 
-        # Check for fastqs else throw to SKIP execution
-        fastqs = blackboard.get_fastq_paths()
-        if not fastqs: raise UserException("FastQC requires FASTQ or BAM/SAM files")
-
         execution = FastQCExecution(SERVICE, VERSION, ident, blackboard, scheduler)
 
          # Get the execution parameters from the blackboard
         try:
+            fastqs = execution.get_all_user_fastqs().values() if Services(ident) == Services.FASTQC else \
+                     execution.get_all_new_fastqs().values() if Services(ident) == Services.POST_FASTQC else \
+                     None
+
+            if fastqs is None: raise Exception('unknown ident in FastQCShim: %s' % ident.value)
+            if not fastqs: raise UserException('no fastq files to process')
+
+            # Compute resources
+            n_fq = len(fastqs)
+            max_par = int(execution._scheduler.max_mem * 4)    # each thread needs 250MB
+            cpu = min(execution._scheduler.max_cpu, len(fastqs), max_par)
+            mem = cpu / 4               # each job 250M
+            spc = n_fq / 10             # each job at most 100M
+            tim = n_fq / cpu * 5 * 60   # each job at most 5 min
+
             # Set up parameters
             params = [
                 '--outdir', '.',
-                '--extract',
-                '--quiet'
+                '--noextract',
+                '--quiet',
+                '--threads', cpu
             ]
 
             params.extend(fastqs)
 
-            job_spec = JobSpec('fastqc', params, MAX_CPU, MAX_MEM, MAX_SPC, MAX_TIM)
+            job_spec = JobSpec('fastqc', params, cpu, mem, spc, tim)
             execution.store_job_spec(job_spec.as_dict())
             execution.start(job_spec)
 
@@ -66,26 +73,25 @@ class FastQCExecution(ServiceExecution):
 
     def start(self, job_spec):
         if self.state == Execution.State.STARTED:
-            self._job = self._scheduler.schedule_job('fastqc', job_spec, 'FastQC')
+            self._job = self._scheduler.schedule_job('fastqc', job_spec, self.ident)
 
     def collect_output(self, job):
         '''Collect the job output and put on blackboard.
            This method is called by super().report() once job is done.'''
 
-#        tsv = job.file_path('report.tsv')
+        # In all cases, store FastQC output path
+        self.store_results(dict(output_path = job.file_path("")))
+
+        # FastQC doesn't report errors using its exit code (sigh), so read its stderr
         try:
-#            metrics = dict()
-#
-#            with open(tsv, newline='') as f:
-#                reader = csv.reader(f, delimiter='\t', quoting=csv.QUOTE_NONE)
-#                for row in reader:
-#                    metrics[translate.get(row[0], row[0])] = row[1]
-#
-            self.store_results({
-                'see_here': job.file_path("")
-                })
-            
+            fail = False
+            with open(job.stderr, 'r') as f:
+                for l in f:
+                    fail = True
+                    self.add_error('fastqc: %s' % l.strip())
+            if fail:
+                self.fail('FastQC reported errors')
+
         except Exception as e:
-            #self.fail("failed to parse output file %s: %s" % (tsv, str(e)))
-            self.fail("FastQC output processing TBD: %s" % str(e))
+            self.fail("failed to parse error output (%s): %s" % (job.stderr, str(e)))
 

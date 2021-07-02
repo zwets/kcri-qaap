@@ -20,7 +20,6 @@ MAX_SPC = 0.001
 MAX_TIM = 5 * 60
 
 
-# The Service class
 class ReadsMetricsShim:
     '''Service shim that executes the backend.'''
 
@@ -35,8 +34,8 @@ class ReadsMetricsShim:
                      execution.get_all_new_fastqs() if Services(ident) == Services.POST_READSMETRICS else \
                      None
 
-            if fastqs is None:
-                raise Exception('Software error: unknown ident in ReadsMetricsShim: %s' % ident.value)
+            if fastqs is None: raise Exception('unknown ident in ReadsMetricsShim: %s' % ident.value)
+            if not fastqs: raise UserException('no fastq files to process')
 
             execution.start(fastqs)
 
@@ -55,8 +54,6 @@ class ReadsMetricsShim:
 class ReadsMetricsExecution(MultiJobExecution):
     '''A single execution of the service, returned by execute(),
        schedules a job for every fastq file in the fq_dict'''
-
-    _jobs = list()
 
     def start(self, fastqs):
         if self.state == Execution.State.STARTED:
