@@ -3,20 +3,15 @@
 # kcri.qaap.shims.Trimmomatic - service shim to the Trimmomatic backend
 #
 
-import os, logging
+import os, logging, functools, operator
 from pico.workflow.executor import Execution
 from pico.jobcontrol.job import JobSpec, Job
-from .base import ServiceExecution, UserException
+from .base import MultiJobExecution, UserException
 from .versions import DEPS_VERSIONS
 
 # Our service name and current backend version
 SERVICE, VERSION = "Trimmomatic", DEPS_VERSIONS['trimmomatic']
 
-# Resource parameters: cpu, memory, disk, run time reqs
-MAX_CPU = 1
-MAX_MEM = 1
-MAX_SPC = 1
-MAX_TIM = 10 * 60
 
 # The Service class
 class TrimmomaticShim:
@@ -27,21 +22,14 @@ class TrimmomaticShim:
 
         execution = TrimmomaticExecution(SERVICE, VERSION, ident, blackboard, scheduler)
 
-        # Get the execution parameters from the blackboard
         try:
-            if len(execution.get_fastq_paths()) != 2:
-                raise UserException("Trimmomatic backend only handles paired-end reads")
+            pe_fqs = blackboard.get_paired_fqs(dict())
+            se_fqs = blackboard.get_single_fqs(dict())
 
-            params = [
-                '--cores', MAX_CPU,
-                '--memory', MAX_MEM,
-                '--reads', ','.join(execution.get_fastq_paths()),
-                '--contigs_out', CONTIGS_OUT
-            ]
+            if not pe_fqs and not se_fqs:
+                UserException('no fastq files to process')
 
-            job_spec = JobSpec('trimmomatic', params, MAX_CPU, MAX_MEM, MAX_SPC, MAX_TIM)
-            execution.store_job_spec(job_spec.as_dict())
-            execution.start(job_spec)
+            execution.start(pe_fqs, se_fqs)
 
         # Failing inputs will throw UserException
         except UserException as e:
@@ -55,24 +43,41 @@ class TrimmomaticShim:
         return execution
 
 # Single execution of the service
-class TrimmomaticExecution(ServiceExecution):
-    '''A single execution of the service, returned by execute().'''
+class TrimmomaticExecution(MultiJobExecution):
+    '''A single execution of the service, returned by execute().
+       schedules a job for every fastq file in the fq_dict'''
 
-    _job = None
-
-    def start(self, job_spec):
+    def start(self, pe_fqs, se_fqs):
         if self.state == Execution.State.STARTED:
-            self._job = self._scheduler.schedule_job('trimmomatic', job_spec, 'Trimmomatic')
 
-    def collect_output(self, job):
+            # Compute job requirements and threads for trimmomatic
+            n_fqs = 2 * len(pe_fqs) + len(se_fqs)
+            jobs_per_gb = 4  # Assuming 250M per job
+            max_cpu = min(self._scheduler.max_cpu, int(self._scheduler.max_mem * jobs_per_gb))  # assuming 250M/job
+            thr_per_job = max(1, int(max_cpu / n_fqs))
+            inp_size = functools.reduce(operator.add, map(lambda f: os.stat(f).st_size, se_fqs.values()),0)
+            inp_size = functools.reduce(operator.add, map(lambda fs: os.stat(fs[0]).st_size + os.stat(fs[1]).st_size, pe_fqs.values()), inp_size)
+            spc = max(0.5, inp_size / (len(pe_fqs)+len(se_fqs)) / (1024*1024*1024))
+
+            job_spec = None
+            for fid, (fq1, fq2) in pe_fqs.items():
+                params = ['PE', '-threads', 2*thr_per_job, '-summary', 'summary.tsv', '-quiet', '-validatePairs', fq1, fq2, '%s_R1.fq' % fid, '%s_U1.fq' % fid, '%s_R2.fq' % fid, '%s_U2.fq' % fid, "ILLUMINACLIP:default-PE.fa:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36" ]
+                job_spec = JobSpec('trimmomatic', params, 2*thr_per_job, 2/jobs_per_gb, 2*spc, 20*60)
+                self.add_job('trimmomatic-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.ident, fid), ('pe', fid))
+
+            for fid, fq in se_fqs.items():
+                params = ['SE', '-threads', thr_per_job, '-summary', 'summary.tsv', '-quiet', fq, '%s.fq' % fid, "SPEC" ]
+                job_spec = JobSpec('trimmomatic', params, thr_per_job, 1/jobs_per_gb, spc, 10*60)
+                self.add_job('trimmomatic-se_%s' % fid, job_spec, '%s/se/%s' % (self.ident, fid), ('se', fid))
+
+    def collect_job(self, results, job, udata):
         '''Collect the job output and put on blackboard.
            This method is called by super().report() once job is done.'''
 
-        contigs_file = job.file_path(CONTIGS_OUT)
+        pese, fid = udata
 
-        if os.path.isfile(contigs_file):
-            self.store_results({ 'contigs_file': contigs_file })
-            self._blackboard.put_assembled_contigs_path(contigs_file)
+        if pese == 'pe':
+            results['paired_fqs'][fid] = (job.file_path('%s_R1.fq' % fid), job.file_path('%s_R2.fq' % fid))
         else:
-            self.fail("backend job produced no output, check: %s", job.file_path(""))
+            results['single_fqs'][fid] = job.file_path('%s.fq' % fid)
 
