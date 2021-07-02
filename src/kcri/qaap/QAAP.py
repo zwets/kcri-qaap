@@ -3,7 +3,7 @@
 # QAAP.py - main for the KCRI Assembly and Quality Analysis Pipeline
 #
 
-import sys, os, argparse, gzip, io, json, re
+import sys, os, argparse, json
 from pico.workflow.logic import Workflow
 from pico.workflow.executor import Executor
 from pico.jobcontrol.subproc import SubprocessScheduler
@@ -11,6 +11,7 @@ from .data import QAAPBlackboard
 from .services import SERVICES
 from .workflow import DEPENDENCIES
 from .workflow import SystemTargets, UserTargets, Services, Params
+from .filescan import detect_filetype, scan_inputs, find_inputs, is_miseq_output_dir
 from . import __version__
 
 # Global variables and defaults
@@ -123,23 +124,23 @@ per line, in a text file and pass this file with @FILENAME.
     fastas = dict()
     if len(args.inputs) == 1 and os.path.isdir(args.inputs[0]):
         inp_dir = os.path.abspath(args.inputs[0])
-        if filescan.is_miseq_output_dir(inp_dir):
+        if is_miseq_output_dir(inp_dir):
             miseq_run_dir = inp_dir
-            _, single_fqs, paired_fqs = filescan.find_inputs(
+            _, single_fqs, paired_fqs = find_inputs(
                 os.path.join(miseq_run_dir,'Data').join('Intensities').join('BaseCalls'))
             if single_fqs:
                 err_exit('unpaired fastqs found in MiSeq run: %s', str(single_fqs))
         else:
-            fastas, single_fqs, paired_fqs = filescan.find_inputs(inp_dir)
+            fastas, single_fqs, paired_fqs = find_inputs(inp_dir)
     elif args.inputs:
-        fastas, single_fqs, paired_fqs = filescan.scan_inputs(args.inputs, strict=True)
+        fastas, single_fqs, paired_fqs = scan_inputs(args.inputs, strict=True)
 
     # Parse the ref parameter
     reference = None
     if args.ref:
         if not os.path.isfile(args.ref):
             err_exit('no such file: %s', args.ref)
-        if filescan.detect_filetype(args.ref) != 'fasta':
+        if detect_filetype(args.ref) != 'fasta':
             err_exit('reference not a FASTA file: %s', args.ref)
         reference = os.path.abspath(args.ref)
 
@@ -192,7 +193,7 @@ per line, in a text file and pass this file with @FILENAME.
 
     # We want MultiQC to always happen, and always at the very end,
     # so we remove it if user specified it, and execute it below
-    targets = list(filter(lambda t: t != UserTargets.MULTIQC), targets)
+    targets = list(filter(lambda t: t != SystemTargets.MULTIQC, targets))
 
     # Set up the workflow executor and run the workflow
     workflow = Workflow(DEPENDENCIES, params, targets, excludes)
@@ -201,7 +202,7 @@ per line, in a text file and pass this file with @FILENAME.
     executor.execute(blackboard)
 
     # When done run MultiQC (unless excluded by user)
-    multiqc = Executor(DEPENDENCIES, params, [SystemTargets.MULTIQC], excludes), SERVICES, scheduler)
+    multiqc = Executor(Workflow(DEPENDENCIES, params, [SystemTargets.MULTIQC], excludes), SERVICES, scheduler)
     multiqc.execute(blackboard)
 
     # DONE, mark the end of the run end on the blackboard
@@ -216,7 +217,7 @@ per line, in a text file and pass this file with @FILENAME.
         commasep = lambda l: ','.join(l) if l else ''
         b = blackboard
         d = dict({
-            'r_id': b.get_run_id(),
+            's_id': 'TDOD',
             'n_reads': b.get('services/ReadsMetrics/results/n_reads', 'NA'),
             'nt_read': b.get('services/ReadsMetrics/results/n_bases', 'NA'),
             'pct_q30': b.get('services/ReadsMetrics/results/pct_q30', 'NA'),

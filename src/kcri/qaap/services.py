@@ -14,7 +14,7 @@ from .workflow import Services
 from .shims.ContigsMetrics import ContigsMetricsShim
 from .shims.FastQC import FastQCShim
 from .shims.FastQScreen import FastQScreenShim
-from .shims.InterOp import InteropShim
+from .shims.InterOp import InterOpShim
 from .shims.KneadData import KneadDataShim
 from .shims.MultiQC import MultiQCShim
 from .shims.Quast import QuastShim
@@ -28,16 +28,19 @@ from .shims.base import UnimplementedService
 SERVICES = {
     Services.CONTIGSMETRICS:    ContigsMetricsShim(),
     Services.FASTQC:            FastQCShim(),
-	Services.FASTQSCREEN:		FastQScreenShim()
-	Services.INTEROP:			InterOpShim(),
-	Services.KNEADDATA:			KneadDataShim(),
-	Services.MULTIQC:			MultiQCShim(),
+    Services.FASTQSCREEN:       FastQScreenShim(),
+    Services.INTEROP:           InterOpShim(),
+    Services.KNEADDATA:         KneadDataShim(),
+    Services.MULTIQC:           MultiQCShim(),
     Services.QUAST:             QuastShim(),
+    Services.POST_FASTQC:       FastQCShim(),       # Same as non-post, they
+    Services.POST_FASTQSCREEN:  FastQScreenShim(),  # can tell difference by
+    Services.POST_READSMETRICS: ReadsMetricsShim(), # the 'ident' parameter
     Services.READSMETRICS:      ReadsMetricsShim(),
-	Services.SKESA:				SKESAShim(),
-	Services.SPADES:			SPAdesShim(),
-	Services.TRIMMOMATIC:		TrimmomaticShim(),
-	Services.UNICYCLER:			UnicyclerShim()
+    Services.SKESA:             SKESAShim(),
+    Services.SPADES:            SPAdesShim(),
+    Services.TRIMMOMATIC:       TrimmomaticShim(),
+    Services.UNICYCLER:         UnicyclerShim()
 }
 
 # Check that every enum that is defined has a mapping to a service

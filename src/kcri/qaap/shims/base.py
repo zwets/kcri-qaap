@@ -134,12 +134,27 @@ class ServiceExecution(Execution):
             raise UserException("required user input is missing: %s" % param)
         return ret
 
-    def get_fastq_paths(self, default=None):
-        '''Return the list of fastq paths, or fail if no default provided.'''
-        ret = self._blackboard.get_fastq_paths(default)
-        if ret is None:
+    def get_all_user_fastqs(self, default=None):
+        '''Return the dict of all user fastqs, with pairs split into two.'''
+        ret = dict()
+        for k,(f1,f2) in self._blackboard.get_paired_fqs(dict()).items():
+            ret[k+"_R1"], ret[k+"_R2"] = f1, f2
+        for k,f in self._blackboard.get_single_fqs(dict()).items():
+            ret[k+("_U" if k in d else "")] = f
+        if not ret and default is None:
             raise UserException("no fastq files were provided")
-        return ret
+        return ret if ret else default
+
+    def get_all_new_fastqs(self, default=None):
+        '''Analog of get_all_user_fastqs for produced (trimmed or otherwise) fastqs.'''
+        ret = dict()
+        for k,(f1,f2) in self._blackboard.get_new_paired_qs(dict()).items():
+            ret[k+"_R1"], ret[k+"_R2"] = f1, f2
+        for k,f in self._blackboard.get_new_single_fqs(dict()).items():
+            ret[k+("_U" if k in d else "")] = f
+        if not ret and default is None:
+            raise UserException("no new fastq files were produced in this run")
+        return ret if ret else default
 
     def get_contigs_path(self, default=None):
         '''Return the path to the user provided contigs, or fail if no default.'''
@@ -163,6 +178,91 @@ class ServiceExecution(Execution):
         return ret
 
 
+### class MultiJobExecution
+#
+#   ServiceExecution specialisation for when the service spawns a number
+#   of jobs.  Method add_job adds a job to its collection.
+#   Derived classes must override collect_job and optionally cleanup_job,
+#   or may override collect_results which will be invoked when all done.
+
+class MultiJobExecution(ServiceExecution):
+    '''A single execution of a service that spawn a number of jobs.'''
+    pass
+
+    _jobs = list()
+
+    def add_job(self, jid, jspec, jdir, userdata = None):
+        '''Schedules a job with unique job id, spec, work dir, and
+           optional arbitrary userdata that will be kept in the job
+           table and passed to collect_job and cleanup_job.'''
+        job = self._scheduler.schedule_job(jid, jspec, jdir)
+        self._jobs.append((job, userdata))
+
+    def report(self):
+        '''Implements super callback to report current execution state.
+           Default implementation returns until all jobs are done, then
+           calls collect_results with the list of (job,userdata) tuples.'''
+
+        # If our outward state is STARTED check the jobs
+        if self.state == Execution.State.STARTED:
+
+            # We report only once all our jobs are done
+            if all(j[0].state in [ Job.State.COMPLETED, Job.State.FAILED ] for j in self._jobs):
+
+                # Invoke virtual method collect_result and store on execution
+                self.store_results(self.collect_results(self._jobs))
+
+                # State may have failed in the collect_results step
+                if self.state != Execution.State.FAILED:
+
+                    # Execution state is FAILED if all jobs failed, else COMPLETED
+                    if any(j[0].state == Job.State.COMPLETED for j in self._jobs):
+                        self.done()
+                    else:
+                        self.fail('no successful %s job' % self.ident)
+
+        # Return current state of execution as a whole
+        return self.state
+
+    def collect_results(self, jobs):
+        '''Default implementation, collects output in a dict by invoking
+           collect_job for each COMPLETED job in turn, and adding an
+           execution error for each FAILED job.  Returns results, so
+           that an override could invoke this super, then post process.'''
+
+        results = dict()
+
+        for job, userdata in self._jobs:
+
+            # Call virtual collect_job for each completed job
+            if job.state == Job.State.COMPLETED:
+                try:
+                    self.collect_job(results, job, userdata)
+                except Exception as e:
+                    self.fail("failed to collect output for job '%s': %s", job.name, str(e))
+
+            # Add execution error for each failed job
+            elif job.state == Job.State.FAILED:
+                self.add_error('%s: %s' % (job.name, job.error))
+
+            # Invoke virtual cleanup_job in case job held e.g. temp files
+            self.cleanup_job(job, userdata)
+
+        # Return the results object so that subclass can wrap this and postprocess
+        return results
+
+    def collect_job(self, results, job, userdata):
+        '''Must be overridden if default implementation of collect_results used.
+           Should process job output and plug it into the results dictionary.
+           Uncaught exceptions will result in whole execution fail.'''
+        raise Exception('collect_output not implemented')
+
+    def cleanup_job(self, job, userdata):
+        '''Can be overridden if default implementation of collect_results is used
+           and jobs need to clean up after themselves (e.g. temp dirs).'''
+        pass
+
+
 ### class UnimplementedService
 #
 #   Shim for services in the SERVICES map that don't have a shim yet.
@@ -178,5 +278,4 @@ class UnimplementedService():
     class Execution(ServiceExecution):
         def report(self):
             return self.fail("service %s is not implemented", self.ident)
-
 

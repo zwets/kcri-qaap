@@ -17,6 +17,9 @@ __pycache__
 !/ext/ncbi-blast/bin/makeblastdb
 /ext/quast/quast_libs/site_packages/joblib2
 /ext/quast/quast_libs/site_packages/simplejson
+/ext/unicycler/misc
+/ext/unicycler/sample_data
+/ext/unicycler/test
 /scripts
 /src/*/build
 /test*

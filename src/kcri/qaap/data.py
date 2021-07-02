@@ -44,6 +44,12 @@ class QAAPBlackboard(Blackboard):
     def get_user_input(self, param, default=None):
         return self.get('qaap/user_inputs/%s' % param, default)
 
+    def put_qaap_output(self, param, value):
+        return self.put('qaap/outputs/%s' % param, value)
+
+    def get_qaap_output(self, param, default=None):
+        return self.get('qaap/outputs/%s' % param, default)
+
     def add_warning(self, warning):
         '''Stores a warning on the 'qaap' top level (note: use service warning instead).'''
         self.append_to('qaap/warnings', warning)
@@ -63,7 +69,14 @@ class QAAPBlackboard(Blackboard):
             raise Exception("db dir path is not a directory: %s" % db_dir)
         return os.path.abspath(db_dir)
 
-    # Inputs: single_fqs, paired_fqs, fastas
+    # Inputs: single_fqs, paired_fqs, fastas, miseq_run_dir
+
+    def put_miseq_run_dir(self, d):
+        '''Stores the path to the MiSeq run output if processing whole run.'''
+        self.put_user_input('miseq_run_dir', d)
+
+    def get_miseq_run_dir(self, default=None):
+        return self.get_user_input('miseq_run_dir', default)
 
     def put_single_fqs(self, dic):
         '''Stores the single fastqs dict as its own (pseudo) user input.'''
@@ -81,10 +94,28 @@ class QAAPBlackboard(Blackboard):
 
     def put_fastas(self, dic):
         '''Stores the fastas dict as its own (pseudo) user input.'''
-        self.put_user_input('fastas', path)
+        self.put_user_input('fastas', dic)
 
     def get_fastas(self, default=None):
         return self.get_user_input('fastas', default)
+
+    # QAAP outputs
+
+    def add_new_single_fq(self, sid, path):
+        '''Adds a produced unpaired fastq file path to the central output.'''
+        self.put_qaap_output('single_fqs/' + sid, path)
+
+    def get_new_single_fqs(self, default=None):
+        '''Returns dict of single astqs produced by trimming or cleaning.'''
+        self.get_qaap_output('single_fqs', default)
+
+    def add_new_paired_fq(self, sid, pair):
+        '''Adds a produced fastq file pair's file paths to the central output.'''
+        self.put_qaap_output('paired_fqs/' + sid, pair)
+
+    def get_new_paired_fqs(self, default=None):
+        '''Returns dict of paired fastqs produced by trimming or cleaning.'''
+        self.get_qaap_output('paired_fqs', default)
 
     # Reference
 

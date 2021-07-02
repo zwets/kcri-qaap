@@ -124,7 +124,7 @@ def scan_fastas(fns):
 def scan_inputs(fns, strict=False):
     lst = list(fns)  # put in list as fns may be iterator, and we need 2 passes
     if strict: 
-        f = next(filter(lambda x: not is_fastq_file(f) and not is_fasta_file(f), lst), None)
+        f = next(filter(lambda x: not is_fastq_file(x) and not is_fasta_file(x), lst), None)
         if f: err_exit('invalid input: file is neither FASTA nor fastq: %s', f)
     fqs = scan_fastqs(lst)
     return (scan_fastas(lst), fqs[0], fqs[1])

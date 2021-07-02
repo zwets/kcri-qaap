@@ -40,6 +40,7 @@ class Checkpoints(pico.workflow.logic.Checkpoints):
        takes an input that could come either from user or as a service output.'''
     ASSEMBLED = 'assembled'     # Assembly was performed
     CONTIGS = 'contigs'         # Either FASTA was passed or assembly done
+    NEWREADS = 'newreads'       # New reads were produced by trimming or otherwise
 
 class Services(pico.workflow.logic.Services):
     '''Enum that identifies the available services.  Each corresponds to a shim
@@ -52,6 +53,9 @@ class Services(pico.workflow.logic.Services):
     KNEADDATA = 'KneadData'
     MULTIQC = 'MultiQC'
     QUAST = 'Quast'
+    POST_FASTQC = 'PostFastQC'
+    POST_FASTQSCREEN = 'PostFastQScreen'
+    POST_READSMETRICS = 'PostReadsMetrics'
     READSMETRICS = 'ReadsMetrics'
     SKESA = 'SKESA'
     SPADES = 'SPAdes'
@@ -72,7 +76,9 @@ class UserTargets(pico.workflow.logic.UserTargets):
 
 class SystemTargets(pico.workflow.logic.UserTargets):
     '''Enum defining targets that the system (not the user) can request.
-       We use it to define the MultiQC workflow that always runs at the end.'''
+       The PostQC runs automatically if reads-qc and trim or clean were done.
+       The MultiQC workflow always runs at the end, not user selectable.'''
+    POST_QC = 'post-qc'
     MULTIQC = 'multi-qc'
 
 
@@ -88,6 +94,8 @@ class SystemTargets(pico.workflow.logic.UserTargets):
 
 DEPENDENCIES = {
 
+    # UserTargets
+
     UserTargets.DEFAULT:        UserTargets.QC,
     UserTargets.QC:             ALL( OPT( UserTargets.READS_QC ),
                                      OPT( UserTargets.ASSEMBLY_QC ) ),
@@ -98,12 +106,23 @@ DEPENDENCIES = {
     UserTargets.ASSEMBLY_QC:    ALL( OPT( Services.CONTIGSMETRICS ),
                                      OPT( Services.QUAST ) ),
     UserTargets.SCREEN:         Services.FASTQSCREEN,
-    UserTargets.CLEAN:          SEQ( Services.KNEADDATA, UserTargets.READS_QC ),
-    UserTargets.TRIM:           SEQ( Services.TRIMMOMATIC, UserTargets.READS_QC ), 
+    UserTargets.CLEAN:          SEQ( OPT( UserTargets.READS_QC ),
+                                     Services.KNEADDATA,
+                                     OPT( SystemTargets.POST_QC ) ),
+    UserTargets.TRIM:           SEQ( OPT( UserTargets.READS_QC ),
+                                     Services.TRIMMOMATIC,
+                                     OPT( SystemTargets.POST_QC ) ),
     UserTargets.ASSEMBLE:       ONE( Services.SKESA, Services.SPADES, Services.UNICYCLER ),
     UserTargets.POLISH:         Services.UNICYCLER,
 
+    # SystemTargets
+
     SystemTargets.MULTIQC:      Services.MULTIQC,
+    SystemTargets.POST_QC:      ALL( OPT( Services.POST_READSMETRICS ),
+                                     OPT( Services.POST_FASTQC ),
+                                     OPT( Services.POST_FASTQSCREEN ) ),
+
+    # Services
 
     Services.CONTIGSMETRICS:	OIF( Checkpoints.CONTIGS ),
     Services.FASTQC:	        Params.READS,
@@ -112,14 +131,20 @@ DEPENDENCIES = {
     Services.KNEADDATA:         ALL( Params.META, Params.READS ),
     Services.MULTIQC:	        ALL(), # No dependencies
     Services.QUAST:	            OIF( Checkpoints.CONTIGS ),
+    Services.POST_FASTQC:	    OIF( Checkpoints.NEWREADS ),
+    Services.POST_FASTQSCREEN:	OIF( Checkpoints.NEWREADS ),
+    Services.POST_READSMETRICS:	OIF( Checkpoints.NEWREADS ),
     Services.READSMETRICS:	    Params.READS,
     Services.SKESA:	            ALL( ONE( Params.MISEQ_READS, Params.MISEQ_RUN ), Params.READS ),
     Services.SPADES:	        ALL( Params.READS, Services.TRIMMOMATIC ),
     Services.TRIMMOMATIC:	    Params.READS,
     Services.UNICYCLER:	        Params.READS,
 
+    # Checkpoints
+
     Checkpoints.CONTIGS:        ONE( Params.FASTA, Checkpoints.ASSEMBLED ),
     Checkpoints.ASSEMBLED:      ONE( Services.SKESA, Services.SPADES, Services.UNICYCLER ),
+    Checkpoints.NEWREADS:       ONE( Services.TRIMMOMATIC, Services.KNEADDATA )
 }
 
 # Consistency check on the DEPENDENCIES definitions
