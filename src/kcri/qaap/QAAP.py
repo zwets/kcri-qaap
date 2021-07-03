@@ -94,11 +94,11 @@ per line, in a text file and pass this file with @FILENAME.
 #    group.add_argument('--sq-p', metavar='PLATFORM', help='sequencing platform (%s)' % ','.join(v.value for v in SeqPlatform))
 #    group.add_argument('--sq-r', metavar='PAIRING', help='pairing of reads (%s; default: %s when two fastqs are passed, unpaired when one)' % (', '.join(v.value for v in SeqPairing), SeqPairing.PAIRED.value))
     group = parser.add_argument_group('Trimming parameters')
-    group.add_argument('--tr-q', metavar='Q', default=None, help="cut-off Q score (default: 10 regular, 20 metagenomic)")
-    group.add_argument('--tr-l', metavar='LEN', default=36, help="minimum read length to keep after trimming (36)")
-    group.add_argument('--tr-u', action='store_true', help="move widowed reads to own file (default: keep undersized mate)")
+    group.add_argument('--tr-q', type=int, metavar='Q', default=None, help="cut-off Q score (default: 10 regular, 20 metagenomic)")
+    group.add_argument('--tr-l', type=int, metavar='LEN', default=None, help="minimum read length to keep (default: 36 regular, 72 metagenomic)")
+    group.add_argument('--tr-a', metavar='NAME', default=None, help="base name of the Trimmomatic adapter file [default], -{PE.SE}.fa will be appended")
     group = parser.add_argument_group('Quast parameters')
-    group.add_argument('--qu-t', metavar='LEN', default=500, help="threshold contig length for Quast (500)")
+    group.add_argument('--qu-t', type=int, metavar='LEN', default=500, help="threshold contig length for Quast (500)")
 
     # Perform the parsing
     args = parser.parse_args()

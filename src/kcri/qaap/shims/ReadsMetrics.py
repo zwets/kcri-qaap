@@ -64,9 +64,18 @@ class ReadsMetricsExecution(MultiJobExecution):
                 job_spec = JobSpec('sh', [ '-c', cmd, 'fastq-stats' ], MAX_CPU, MAX_MEM, MAX_SPC, MAX_TIM)
 
                 # We add the fid as userdata, so we can use it in collect_output
+                self.add_job_spec(fid, job_spec.as_dict())
                 self.add_job('fastq-stats_%s' % fid, job_spec, self.ident, fid)
+
+    @staticmethod
+    def parse_line(line):
+        l = line.strip().split('\t')
+        return (l[0],
+                int(l[1]) if l[0].startswith('n_') else 
+                float(l[1]) if l[0].startswith('pct_') else 
+                l[1])
 
     def collect_job(self, results, job, fid):
         with open(job.stdout) as f:
-            results[fid] = dict(map(tuple, map(lambda l: l.split('\t'), f)))
+            results[fid] = dict(map(self.parse_line, f))
 

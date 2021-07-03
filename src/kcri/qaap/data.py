@@ -69,6 +69,32 @@ class QAAPBlackboard(Blackboard):
             raise Exception("db dir path is not a directory: %s" % db_dir)
         return os.path.abspath(db_dir)
 
+    def put_reference_path(self, path):
+        '''Stores the path to the user provided reference genome.'''
+        self.put_user_input('reference', path)
+
+    def get_reference_path(self, default=None):
+        return self.get_user_input('reference', default)
+
+    def is_metagenomic(self):
+        return self.get_user_input('meta', False)
+
+    def get_trim_min_q(self):
+        return self.get_user_input('tr_q', 20 if self.is_metagenomic() else 10)
+
+    def get_trim_min_l(self):
+        return self.get_user_input('tr_l', 72 if self.is_metagenomic() else 36)
+
+    def get_trimmomatic_adapters(self, which):  # which is PE or SE
+        bn = self.get_user_input('tr_a')
+        if not bn:
+            fn = '/usr/src/ext/trimmomatic/adapters/default-%s.fa' % which
+        else:
+            fn = '%s/trimmomatic/%s-%s.fa' % (self.get_db_dir(), bn, which)
+        if not os.path.isfile(fn):
+            raise Exception("trimmomatic adapter file not found: %s" % fn)
+        return fn
+
     # Inputs: single_fqs, paired_fqs, fastas, miseq_run_dir
 
     def put_miseq_run_dir(self, d):
@@ -116,13 +142,4 @@ class QAAPBlackboard(Blackboard):
     def get_new_paired_fqs(self, default=None):
         '''Returns dict of paired fastqs produced by trimming or cleaning.'''
         self.get_qaap_output('paired_fqs', default)
-
-    # Reference
-
-    def put_reference_path(self, path):
-        '''Stores the path to the user provided reference genome.'''
-        self.put_user_input('reference', path)
-
-    def get_reference_path(self, default=None):
-        return self.get_user_input('reference', default)
 

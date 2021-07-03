@@ -45,39 +45,84 @@ class TrimmomaticShim:
 # Single execution of the service
 class TrimmomaticExecution(MultiJobExecution):
     '''A single execution of the service, returned by execute().
-       schedules a job for every fastq file in the fq_dict'''
+       schedules a job for every fastq pair and file.'''
 
     def start(self, pe_fqs, se_fqs):
         if self.state == Execution.State.STARTED:
 
-            # Compute job requirements and threads for trimmomatic
-            n_fqs = 2 * len(pe_fqs) + len(se_fqs)
-            jobs_per_gb = 4  # Assuming 250M per job
-            max_cpu = min(self._scheduler.max_cpu, int(self._scheduler.max_mem * jobs_per_gb))  # assuming 250M/job
-            thr_per_job = max(1, int(max_cpu / n_fqs))
-            inp_size = functools.reduce(operator.add, map(lambda f: os.stat(f).st_size, se_fqs.values()),0)
-            inp_size = functools.reduce(operator.add, map(lambda fs: os.stat(fs[0]).st_size + os.stat(fs[1]).st_size, pe_fqs.values()), inp_size)
-            spc = max(0.5, inp_size / (len(pe_fqs)+len(se_fqs)) / (1024*1024*1024))
+            # Get the trimmomatic params
+            min_q = self._blackboard.get_trim_min_q()
+            min_l = self._blackboard.get_trim_min_l()
+            ad_pe = self._blackboard.get_trimmomatic_adapters('PE') if pe_fqs else None
+            ad_se = self._blackboard.get_trimmomatic_adapters('SE') if se_fqs else None
 
-            job_spec = None
+            # Compute max requestable resources
+            gb_per_thr = 0.25  # Assuming 250M per thread
+            max_thr = min(self._scheduler.max_cpu, int(self._scheduler.max_mem / gb_per_thr))
+
+            # Compute threads per fq
+            n_fqs = 2*len(pe_fqs) + len(se_fqs)
+            thr_per_fq = min(4, max(1, int(max_thr / n_fqs)))
+
+            # Compute disc requirement per fq
+            inp_spc = functools.reduce(operator.add, map(lambda f: os.stat(f[0]).st_size + os.stat(f[1]).st_size, pe_fqs.values()), 
+                      functools.reduce(operator.add, map(lambda f: os.stat(f).st_size, se_fqs.values()),0))
+            spc_per_fq = max(0.5, inp_spc / n_fqs / (1024*1024*1024))
+
+            # Schedule the pe jobs
             for fid, (fq1, fq2) in pe_fqs.items():
-                params = ['PE', '-threads', 2*thr_per_job, '-summary', 'summary.tsv', '-quiet', '-validatePairs', fq1, fq2, '%s_R1.fq' % fid, '%s_U1.fq' % fid, '%s_R2.fq' % fid, '%s_U2.fq' % fid, "ILLUMINACLIP:default-PE.fa:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36" ]
-                job_spec = JobSpec('trimmomatic', params, 2*thr_per_job, 2/jobs_per_gb, 2*spc, 20*60)
-                self.add_job('trimmomatic-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.ident, fid), ('pe', fid))
+                self.schedule_pe_job(fid, fq1, fq2, min_q, min_l, ad_pe, 2*thr_per_fq, 2*gb_per_thr, 2*spc_per_fq)
 
+            # Schedule the se jobs
             for fid, fq in se_fqs.items():
-                params = ['SE', '-threads', thr_per_job, '-summary', 'summary.tsv', '-quiet', fq, '%s.fq' % fid, "SPEC" ]
-                job_spec = JobSpec('trimmomatic', params, thr_per_job, 1/jobs_per_gb, spc, 10*60)
-                self.add_job('trimmomatic-se_%s' % fid, job_spec, '%s/se/%s' % (self.ident, fid), ('se', fid))
+                self.schedule_se_job(fid, fq, min_q, min_l, ad_se, thr_per_fq, gb_per_thr, spc_per_fq)
 
+    def schedule_pe_job(self, fid, fq1, fq2, min_q, min_l, adap, cpu, mem, spc):
+
+        udata = (fid, '%s_R1.fq'%fid, '%s_U1.fq'%fid, '%s_R2.fq'%fid, '%s_U2.fq'%fid)
+        params = ['PE', '-threads', cpu, '-summary', 'summary.txt', '-quiet', '-validatePairs' ]
+        params.extend([fq1,fq2])
+        params.extend(udata[1:])
+        params.extend(['ILLUMINACLIP:%s:2:30:10:1:true'%adap,'LEADING:3','TRAILING:3','SLIDINGWINDOW:4:%d'%min_q, 'MINLEN:%d'%min_l])
+        job_spec = JobSpec('trimmomatic', params, cpu, mem, spc, 10*60)
+        self.add_job_spec('pe/%s'%fid, job_spec.as_dict())
+        self.add_job('trimmomatic-pe_%s'%fid, job_spec, '%s/pe/%s'%(self.ident,fid), udata)
+
+    def schedule_se_job(self, fid, fq, min_q, min_l, adap, cpu, mem, spc):
+
+        udata = (fid, '%s.fq'%fid)
+        params = ['PE', '-threads', cpu, '-summary', 'summary.txt', '-quiet' ]
+        params.extend(udata[1])
+        params.extend(['ILLUMINACLIP:%s:2:30:10:1:true'%adap,'LEADING:3','TRAILING:3','SLIDINGWINDOW:4:%d','MINLEN:%d'%(min_q, min_l)])
+        job_spec = JobSpec('trimmomatic', params, cpu, mem, spc, 5*60)
+        self.add_job_spec('se/%s'%fid, job_spec.as_dict())
+        self.add_job('trimmomatic-se_%s'%fid, job_spec, '%s/se/%s'%(self.ident,fid), udata)
+
+    @staticmethod
+    def parse_line(line):
+        l = line.lower().replace(': ',':').replace(' ','_').split(':')
+        return (l[0], int(l[1]) if l[1].find('.') == -1 else float(l[1]))
+    
     def collect_job(self, results, job, udata):
         '''Collect the job output and put on blackboard.
            This method is called by super().report() once job is done.'''
 
-        pese, fid = udata
+        fid = udata[0]
+        result = dict()
 
-        if pese == 'pe':
-            results['paired_fqs'][fid] = (job.file_path('%s_R1.fq' % fid), job.file_path('%s_R2.fq' % fid))
-        else:
-            results['single_fqs'][fid] = job.file_path('%s.fq' % fid)
+        with open(job.file_path('summary.txt'), 'r') as f:
+            result['summary'] = dict(map(self.parse_line, f))
+
+        if len(udata) == 5:     # paired end
+            bag = results.get('pe', dict())
+            result['paired'] = [job.file_path(udata[1]), job.file_path(udata[3])]
+            result['unpaired'] = list(filter(lambda f: os.stat(f).st_size != 0, [job.file_path(udata[2]), job.file_path(udata[4])]))
+            bag[fid] = result
+            results['pe'] = bag
+
+        else: # len(udata) == 2: # single
+            bag = results.get('se', dict())
+            result['fastq'] = job.file_path(udata[1])
+            bag[fid] = result
+            results['se'] = bag
 

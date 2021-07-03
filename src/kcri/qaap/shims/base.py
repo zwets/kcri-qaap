@@ -81,8 +81,12 @@ class ServiceExecution(Execution):
         self._blackboard.append_to('services/%s/%s' % (self._ident, 'errors'), errmsg)
 
     def store_job_spec(self, jobspec):
-        '''Store the service parameters on the blackboard.'''
+        '''Store the service parameters for a one-job service on the blackboard.'''
         self.put_run_info('job', jobspec)
+
+    def add_job_spec(self, name, jobspec):
+        '''Add the service parameters for a multi-job service to the blackboard.'''
+        self.put_run_info('jobs/%s'%name, jobspec)
 
     def store_results(self, result):
         '''Store the service results on the blackboard.'''
@@ -187,9 +191,14 @@ class ServiceExecution(Execution):
 
 class MultiJobExecution(ServiceExecution):
     '''A single execution of a service that spawn a number of jobs.'''
-    pass
 
-    _jobs = list()
+    _jobs = None
+
+    def __init__(self, svc_name, svc_version, ident, blackboard, scheduler):
+        '''Construct execution with identity, blackboard and scheduler,
+           passes rest on to super().'''
+        super().__init__(svc_name, svc_version, ident, blackboard, scheduler)
+        self._jobs = list()
 
     def add_job(self, jid, jspec, jdir, userdata = None):
         '''Schedules a job with unique job id, spec, work dir, and
@@ -232,7 +241,7 @@ class MultiJobExecution(ServiceExecution):
 
         results = dict()
 
-        for job, userdata in self._jobs:
+        for job, userdata in jobs:
 
             # Call virtual collect_job for each completed job
             if job.state == Job.State.COMPLETED:
