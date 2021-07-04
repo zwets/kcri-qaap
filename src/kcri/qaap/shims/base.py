@@ -32,14 +32,16 @@ class ServiceExecution(Execution):
     _blackboard = None
     _scheduler = None
 
-    def __init__(self, svc_name, svc_version, ident, blackboard, scheduler):
-        '''Construct execution rwith identity, blackboard and scheduler, registering
-        wraps blackboard in QAAPBlackboard, passes rest on to super().'''
-        super().__init__(ident)
+    def __init__(self, svc_name, svc_version, sid, xid, blackboard, scheduler, xdata):
+        '''Construct execution with identity, blackboard and scheduler, registering
+           wraps blackboard in QAAPBlackboard, passes rest on to super().'''
+        super().__init__(sid, xid)
         self._blackboard = blackboard
         self._scheduler = scheduler
-        self.put_run_info('service', svc_name)
+        self.put_run_info('service', sid)
+        self.put_run_info('shim', svc_name)
         self.put_run_info('version', svc_version)
+        self.put_run_info('execution', xid)
         self._transition(Execution.State.STARTED)
 
     # Implementable interface of the execution, to be implemented in subclasses
@@ -83,10 +85,6 @@ class ServiceExecution(Execution):
     def store_job_spec(self, jobspec):
         '''Store the service parameters for a one-job service on the blackboard.'''
         self.put_run_info('job', jobspec)
-
-    def add_job_spec(self, name, jobspec):
-        '''Add the service parameters for a multi-job service to the blackboard.'''
-        self.put_run_info('jobs/%s'%name, jobspec)
 
     def store_results(self, result):
         '''Store the service results on the blackboard.'''
