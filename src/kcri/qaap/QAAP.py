@@ -191,10 +191,6 @@ per line, in a text file and pass this file with @FILENAME.
         params.append(Params.REFERENCE)
         blackboard.put_reference_path(reference)
 
-    # We want MultiQC to always happen, and always at the very end,
-    # so we remove it if user specified it, and execute it below
-    targets = list(filter(lambda t: t != SystemTargets.MULTIQC, targets))
-
     # Set up the workflow executor and run the workflow
     workflow = Workflow(DEPENDENCIES, params, targets, excludes)
     scheduler = SubprocessScheduler(args.max_cpus, args.max_mem, args.max_disc, args.max_time, args.poll, not args.verbose)
