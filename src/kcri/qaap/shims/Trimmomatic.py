@@ -4,7 +4,7 @@
 #
 
 import os, logging, functools, operator
-from pico.workflow.executor import Execution
+from pico.workflow.executor import Task
 from pico.jobcontrol.job import JobSpec, Job
 from .base import MultiJobExecution, UserException
 from .versions import DEPS_VERSIONS
@@ -17,10 +17,10 @@ SERVICE, VERSION = "Trimmomatic", DEPS_VERSIONS['trimmomatic']
 class TrimmomaticShim:
     '''Service shim that executes the backend.'''
 
-    def execute(self, ident, blackboard, scheduler):
-        '''Invoked by the executor.  Creates, starts and returns the Execution.'''
+    def execute(self, sid, xid, blackboard, scheduler):
+        '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = TrimmomaticExecution(SERVICE, VERSION, ident, blackboard, scheduler)
+        execution = TrimmomaticExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
 
         try:
             pe_fqs = blackboard.get_paired_fqs(dict())
@@ -48,7 +48,7 @@ class TrimmomaticExecution(MultiJobExecution):
        schedules a job for every fastq pair and file.'''
 
     def start(self, pe_fqs, se_fqs):
-        if self.state == Execution.State.STARTED:
+        if self.state == Task.State.STARTED:
 
             # Get the trimmomatic params
             min_q = self._blackboard.get_trim_min_q()
@@ -85,7 +85,7 @@ class TrimmomaticExecution(MultiJobExecution):
         params.extend(udata[1:])
         params.extend(['ILLUMINACLIP:%s:2:30:10:1:true'%adap,'LEADING:3','TRAILING:3','SLIDINGWINDOW:4:%d'%min_q, 'MINLEN:%d'%min_l])
         job_spec = JobSpec('trimmomatic', params, cpu, mem, spc, 10*60)
-        self.add_job_spec('pe/%s'%fid, job_spec.as_dict())
+        self.store_job_spec(job_spec.as_dict())
         self.add_job('trimmomatic-pe_%s'%fid, job_spec, '%s/pe/%s'%(self.ident,fid), udata)
 
     def schedule_se_job(self, fid, fq, min_q, min_l, adap, cpu, mem, spc):

@@ -195,11 +195,11 @@ per line, in a text file and pass this file with @FILENAME.
     workflow = Workflow(DEPENDENCIES, params, targets, excludes)
     scheduler = SubprocessScheduler(args.max_cpus, args.max_mem, args.max_disc, args.max_time, args.poll, not args.verbose)
     executor = Executor(workflow, SERVICES, scheduler)
-    executor.execute(blackboard)
+    executor.execute(blackboard, 42)
 
     # When done run MultiQC (unless excluded by user)
     multiqc = Executor(Workflow(DEPENDENCIES, params, [SystemTargets.MULTIQC], excludes), SERVICES, scheduler)
-    multiqc.execute(blackboard)
+    multiqc.execute(blackboard, 99)
 
     # DONE, mark the end of the run end on the blackboard
     blackboard.end_run(workflow.status.value)

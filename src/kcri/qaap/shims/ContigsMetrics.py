@@ -4,7 +4,7 @@
 #
 
 import os, logging
-from pico.workflow.executor import Execution
+from pico.workflow.executor import Task
 from pico.jobcontrol.job import JobSpec, Job
 from .base import ServiceExecution, UserException
 from .versions import DEPS_VERSIONS
@@ -23,10 +23,10 @@ MAX_TIM = 5 * 60
 class ContigsMetricsShim:
     '''Service shim that executes the backend.'''
 
-    def execute(self, ident, blackboard, scheduler):
-        '''Invoked by the executor.  Creates, starts and returns the Execution.'''
+    def execute(self, sid, xid, blackboard, scheduler):
+        '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = ContigsMetricsExecution(SERVICE, VERSION, ident, blackboard, scheduler)
+        execution = ContigsMetricsExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
 
         # From here run the execution, and FAIL it on exception
         try:
@@ -59,7 +59,7 @@ class ContigsMetricsExecution(ServiceExecution):
     _job = None
 
     def start(self, job_spec):
-        if self.state == Execution.State.STARTED:
+        if self.state == Task.State.STARTED:
             self._job = self._scheduler.schedule_job('uf-stats', job_spec, 'ContigsMetrics')
 
     def collect_output(self, job):

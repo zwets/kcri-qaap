@@ -4,7 +4,7 @@
 #
 
 import os, logging
-from pico.workflow.executor import Execution
+from pico.workflow.executor import Task
 from pico.jobcontrol.job import JobSpec, Job
 from .base import ServiceExecution, UserException
 from .versions import DEPS_VERSIONS
@@ -17,18 +17,18 @@ SERVICE, VERSION = "FastQC", DEPS_VERSIONS['fastqc']
 class FastQCShim:
     '''Service shim that executes the backend.'''
 
-    def execute(self, ident, blackboard, scheduler):
-        '''Invoked by the executor.  Creates, starts and returns the Execution.'''
+    def execute(self, sid, xid, blackboard, scheduler):
+        '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = FastQCExecution(SERVICE, VERSION, ident, blackboard, scheduler)
+        execution = FastQCExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
 
          # Get the execution parameters from the blackboard
         try:
-            fastqs = execution.get_all_user_fastqs().values() if Services(ident) == Services.FASTQC else \
-                     execution.get_all_new_fastqs().values() if Services(ident) == Services.POST_FASTQC else \
+            fastqs = execution.get_all_user_fastqs().values() if Services(sid) == Services.FASTQC else \
+                     execution.get_all_new_fastqs().values() if Services(sid) == Services.POST_FASTQC else \
                      None
 
-            if fastqs is None: raise Exception('unknown ident in FastQCShim: %s' % ident.value)
+            if fastqs is None: raise Exception('unknown ident in FastQCShim: %s' % sid)
             if not fastqs: raise UserException('no fastq files to process')
 
             # Compute resources
@@ -72,7 +72,7 @@ class FastQCExecution(ServiceExecution):
     _job = None
 
     def start(self, job_spec):
-        if self.state == Execution.State.STARTED:
+        if self.state == Task.State.STARTED:
             self._job = self._scheduler.schedule_job('fastqc', job_spec, self.ident)
 
     def collect_output(self, job):

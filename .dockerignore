@@ -22,4 +22,5 @@ __pycache__
 /ext/unicycler/test
 /scripts
 /src/*/build
+/src/pico
 /test*

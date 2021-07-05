@@ -4,7 +4,7 @@
 #
 
 import os, logging
-from pico.workflow.executor import Execution
+from pico.workflow.executor import Task
 from pico.jobcontrol.job import JobSpec, Job
 from .base import ServiceExecution, UserException
 from .versions import DEPS_VERSIONS
@@ -25,10 +25,10 @@ CONTIGS_OUT = 'contigs.fna'
 class SKESAShim:
     '''Service shim that executes the backend.'''
 
-    def execute(self, ident, blackboard, scheduler):
-        '''Invoked by the executor.  Creates, starts and returns the Execution.'''
+    def execute(self, sid, xid, blackboard, scheduler):
+        '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = SKESAExecution(SERVICE, VERSION, ident, blackboard, scheduler)
+        execution = SKESAExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
 
         # Max out the CPU and MEM but within reasonability
         MAX_CPU = min(scheduler.max_cpu, 12)
@@ -68,7 +68,7 @@ class SKESAExecution(ServiceExecution):
     _job = None
 
     def start(self, job_spec):
-        if self.state == Execution.State.STARTED:
+        if self.state == Task.State.STARTED:
             self._job = self._scheduler.schedule_job('skesa', job_spec, 'SKESA')
 
     def collect_output(self, job):

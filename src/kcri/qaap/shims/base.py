@@ -7,7 +7,7 @@
 
 import os
 from datetime import datetime
-from pico.workflow.executor import Execution
+from pico.workflow.executor import Task
 from pico.jobcontrol.job import Job
 
 
@@ -26,35 +26,35 @@ class UserException(Exception):
 #   Base class for the executions returned by all QAAP Service shims.
 #   Implements functionality common across all QAAP service executions.
 
-class ServiceExecution(Execution):
+class ServiceExecution(Task):
     '''Implements a single QAAP service execution, subclass for shims to build on.'''
 
     _blackboard = None
     _scheduler = None
 
-    def __init__(self, svc_name, svc_version, sid, xid, blackboard, scheduler, xdata):
-        '''Construct execution with identity, blackboard and scheduler, registering
-           wraps blackboard in QAAPBlackboard, passes rest on to super().'''
+    def __init__(self, svc_shim, svc_version, sid, xid, blackboard, scheduler):
+        '''Construct execution of service sid for workflow execution xid,'''
         super().__init__(sid, xid)
         self._blackboard = blackboard
         self._scheduler = scheduler
-        self.put_run_info('service', sid)
-        self.put_run_info('shim', svc_name)
-        self.put_run_info('version', svc_version)
-        self.put_run_info('execution', xid)
-        self._transition(Execution.State.STARTED)
+        self.put_task_info('id', self.ident)
+        self.put_task_info('shim', svc_shim)
+        self.put_task_info('version', svc_version)
+        self.put_task_info('service', sid)
+        self.put_task_info('execution', xid)
+        self._transition(Task.State.STARTED)
 
     # Implementable interface of the execution, to be implemented in subclasses
 
     def report(self):
-        '''Default implentation of Execution.report, should work for most executions.
+        '''Default implentation of Task.report, should work for most tasks.
            Checks the job and calls collect_output() to put job output on blackboard.'''
 
         # If our outward state is STARTED check the job
-        if self.state == Execution.State.STARTED:
+        if self.state == Task.State.STARTED:
             if self._job.state == Job.State.COMPLETED:
                 self.collect_output(self._job)
-                if self.state != Execution.State.FAILED:
+                if self.state != Task.State.FAILED:
                     self.done()
             elif self._job.state == Job.State.FAILED:
                 self.fail(self._job.error)
@@ -84,13 +84,13 @@ class ServiceExecution(Execution):
 
     def store_job_spec(self, jobspec):
         '''Store the service parameters for a one-job service on the blackboard.'''
-        self.put_run_info('job', jobspec)
+        self.put_task_info('job', jobspec)
 
     def store_results(self, result):
         '''Store the service results on the blackboard.'''
         self._blackboard.put('services/%s/results' % self.ident, result)
 
-    # Override Execution._transition() to add timestamps and status on blackboard.
+    # Override Task._transition() to add timestamps and status on blackboard.
 
     def _transition(self, new_state, error = None):
         '''Extends the superclass _transition to update the blackboard with status,
@@ -99,18 +99,18 @@ class ServiceExecution(Execution):
         # Rely on superclass to set self.state and self.error
         super()._transition(new_state, error)
 
-        # Set the run_info timestamps
+        # Set the task_info timestamps
         now_time = datetime.now()
-        if new_state == Execution.State.STARTED:
-            self.put_run_info('time/start', now_time.isoformat(timespec='seconds'))
+        if new_state == Task.State.STARTED:
+            self.put_task_info('time/start', now_time.isoformat(timespec='seconds'))
         else:
-            start_time = datetime.fromisoformat(self.get_run_info('time/start'))
-            self.put_run_info('time/duration', (now_time - start_time).total_seconds())
-            self.put_run_info('time/end', now_time.isoformat(timespec='seconds'))
+            start_time = datetime.fromisoformat(self.get_task_info('time/start'))
+            self.put_task_info('time/duration', (now_time - start_time).total_seconds())
+            self.put_task_info('time/end', now_time.isoformat(timespec='seconds'))
 
-        # Set the run_info status field and error list
-        self.put_run_info('status', new_state.value)
-        if new_state == Execution.State.FAILED:
+        # Set the task_info status field and error list
+        self.put_task_info('status', new_state.value)
+        if new_state == Task.State.FAILED:
             self.add_error(self.error)
 
         return new_state
@@ -192,10 +192,10 @@ class MultiJobExecution(ServiceExecution):
 
     _jobs = None
 
-    def __init__(self, svc_name, svc_version, ident, blackboard, scheduler):
+    def __init__(self, svc_shim, svc_version, sid, xid, blackboard, scheduler):
         '''Construct execution with identity, blackboard and scheduler,
            passes rest on to super().'''
-        super().__init__(svc_name, svc_version, ident, blackboard, scheduler)
+        super().__init__(svc_shim, svc_version, sid, xid, blackboard, scheduler)
         self._jobs = list()
 
     def add_job(self, jid, jspec, jdir, userdata = None):
@@ -211,7 +211,7 @@ class MultiJobExecution(ServiceExecution):
            calls collect_results with the list of (job,userdata) tuples.'''
 
         # If our outward state is STARTED check the jobs
-        if self.state == Execution.State.STARTED:
+        if self.state == Task.State.STARTED:
 
             # We report only once all our jobs are done
             if all(j[0].state in [ Job.State.COMPLETED, Job.State.FAILED ] for j in self._jobs):
@@ -220,9 +220,9 @@ class MultiJobExecution(ServiceExecution):
                 self.store_results(self.collect_results(self._jobs))
 
                 # State may have failed in the collect_results step
-                if self.state != Execution.State.FAILED:
+                if self.state != Task.State.FAILED:
 
-                    # Execution state is FAILED if all jobs failed, else COMPLETED
+                    # Task state is FAILED if all jobs failed, else COMPLETED
                     if any(j[0].state == Job.State.COMPLETED for j in self._jobs):
                         self.done()
                     else:
@@ -278,9 +278,9 @@ class MultiJobExecution(ServiceExecution):
 class UnimplementedService():
     '''Base unimplemented class, starts but then fails on first report.'''
 
-    def execute(self, ident, blackboard, scheduler):
+    def execute(self, sid, xid, blackboard, scheduler):
         return UnimplementedService.Execution( \
-                'unimplemented', '1.0.0', ident, blackboard, scheduler)
+                'unimplemented', '1.0.0', sid, xid, blackboard, scheduler)
 
     class Execution(ServiceExecution):
         def report(self):

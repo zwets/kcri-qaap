@@ -4,7 +4,7 @@
 # Used by the shims to report their backend version.
 #
 DEPS_VERSIONS = dict()
-DEPS_VERSIONS["picoline"] = "1.1.0"
+DEPS_VERSIONS["picoline"] = "1.3.0"
 DEPS_VERSIONS["fastq-utils"] = "1.2.0"
 DEPS_VERSIONS["skesa"] = "skesa.2.4.0_saute.1.3.0"
 DEPS_VERSIONS["unicycler"] = "v0.4.9"

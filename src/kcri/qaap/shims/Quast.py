@@ -4,7 +4,7 @@
 #
 
 import os, csv, logging
-from pico.workflow.executor import Execution
+from pico.workflow.executor import Task
 from pico.jobcontrol.job import JobSpec, Job
 from .base import ServiceExecution, UserException
 from .versions import DEPS_VERSIONS
@@ -22,10 +22,10 @@ MAX_TIM = 20 * 60
 class QuastShim:
     '''Service shim that executes the backend.'''
 
-    def execute(self, ident, blackboard, scheduler):
-        '''Invoked by the executor.  Creates, starts and returns the Execution.'''
+    def execute(self, sid, xid, blackboard, scheduler):
+        '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = QuastExecution(SERVICE, VERSION, ident, blackboard, scheduler)
+        execution = QuastExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
 
          # Get the execution parameters from the blackboard
         MAX_CPU = scheduler.max_cpu
@@ -158,7 +158,7 @@ class QuastExecution(ServiceExecution):
     _job = None
 
     def start(self, job_spec):
-        if self.state == Execution.State.STARTED:
+        if self.state == Task.State.STARTED:
             self._job = self._scheduler.schedule_job('quast', job_spec, 'Quast')
 
     def collect_output(self, job):
