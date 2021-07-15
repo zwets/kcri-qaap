@@ -32,16 +32,17 @@ class ServiceExecution(Task):
     _blackboard = None
     _scheduler = None
 
-    def __init__(self, svc_shim, svc_version, sid, xid, blackboard, scheduler):
-        '''Construct execution of service sid for workflow execution xid,'''
-        super().__init__(sid, xid)
+    def __init__(self, svc_shim, svc_version, sid, _xid, blackboard, scheduler):
+        '''Construct execution of service sid for workflow execution xid (can be None)
+           writing to blackboard and using the scheduler.'''
+        super().__init__(sid, _xid)
         self._blackboard = blackboard
         self._scheduler = scheduler
-        self.put_task_info('id', self.ident)
+        #self.put_task_info('id', self.id)
+        #self.put_task_info('execution', _xid)
         self.put_task_info('shim', svc_shim)
         self.put_task_info('version', svc_version)
         self.put_task_info('service', sid)
-        self.put_task_info('execution', xid)
         self._transition(Task.State.STARTED)
 
     # Implementable interface of the execution, to be implemented in subclasses
@@ -63,16 +64,16 @@ class ServiceExecution(Task):
 
     # Low level update routines for subclasses
 
-    def get_run_info(self, path):
-        return self._blackboard.get('services/%s/run_info/%s' % (self.ident, path))
+    def get_task_info(self, path):
+        return self._blackboard.get('services/%s/task_info/%s' % (self.sid, path))
 
-    def put_run_info(self, path, value):
-        '''Update the run_info for this execution to have value at path.'''
-        self._blackboard.put('services/%s/run_info/%s' % (self.ident, path), value)
+    def put_task_info(self, path, value):
+        '''Update the task_info for this execution to have value at path.'''
+        self._blackboard.put('services/%s/task_info/%s' % (self.sid, path), value)
 
     def add_warning(self, warning):
         '''Add warning to the list of warnings of the execution.'''
-        self._blackboard.append_to('services/%s/%s' % (self.ident, 'warnings'), warning)
+        self._blackboard.append_to('services/%s/%s' % (self.sid, 'warnings'), warning)
 
     def add_warnings(self, warnings):
         '''Add list of warnings if not empty to the list of warnings of the execution.'''
@@ -80,7 +81,7 @@ class ServiceExecution(Task):
 
     def add_error(self, errmsg):
         '''Add errmsg to the list of errors of the service.'''
-        self._blackboard.append_to('services/%s/%s' % (self.ident, 'errors'), errmsg)
+        self._blackboard.append_to('services/%s/%s' % (self.sid, 'errors'), errmsg)
 
     def store_job_spec(self, jobspec):
         '''Store the service parameters for a one-job service on the blackboard.'''
@@ -88,7 +89,7 @@ class ServiceExecution(Task):
 
     def store_results(self, result):
         '''Store the service results on the blackboard.'''
-        self._blackboard.put('services/%s/results' % self.ident, result)
+        self._blackboard.put('services/%s/results' % (self.sid), result)
 
     # Override Task._transition() to add timestamps and status on blackboard.
 
@@ -123,8 +124,8 @@ class ServiceExecution(Task):
         return self.get_user_input('verbose', False)
 
     def get_db_path(self, db_name, default=None):
-        '''Return the path to db_name under db_dir, fail if not a dir.'''
-        db_path = os.path.join(self._blackboard.get_db_dir(), db_name)
+        '''Return the path to db_name under db_root, fail if not a dir.'''
+        db_path = os.path.join(self._blackboard.get_db_root(), db_name)
         if not os.path.isdir(db_path):
             raise UserException("database path not found: %s", db_path)
         return db_path
@@ -136,41 +137,48 @@ class ServiceExecution(Task):
             raise UserException("required user input is missing: %s" % param)
         return ret
 
-    def get_all_user_fastqs(self, default=None):
-        '''Return the dict of all user fastqs, with pairs split into two.'''
+    def get_input_fastqs(self, default=None):
+        '''Return dict with all individual fastqs.'''
         ret = dict()
-        for k,(f1,f2) in self._blackboard.get_paired_fqs(dict()).items():
-            ret[k+"_R1"], ret[k+"_R2"] = f1, f2
-        for k,f in self._blackboard.get_single_fqs(dict()).items():
-            ret[k+("_U" if k in d else "")] = f
+        for k,(f1,f2) in self._blackboard.get_input_il_fqs(dict()).items():
+            ret['%s_R1' % k] = f1
+            ret['%s_R2' % k] = f2
+        for k,(f1,f2) in self._blackboard.get_input_pe_fqs(dict()).items():
+            ret['%s_R1' % k] = f1
+            ret['%s_R2' % k] = f2
+        for k,fq in self._blackboard.get_input_se_fqs(dict()).items():
+            ret[k] = fq
         if not ret and default is None:
             raise UserException("no fastq files were provided")
         return ret if ret else default
 
-    def get_all_new_fastqs(self, default=None):
-        '''Analog of get_all_user_fastqs for produced (trimmed or otherwise) fastqs.'''
+    def get_input_pairs(self, default=None):
+        '''Return dict with all (illumina and other) read pairs.'''
         ret = dict()
-        for k,(f1,f2) in self._blackboard.get_new_paired_qs(dict()).items():
-            ret[k+"_R1"], ret[k+"_R2"] = f1, f2
-        for k,f in self._blackboard.get_new_single_fqs(dict()).items():
-            ret[k+("_U" if k in d else "")] = f
+        ret.update(self._blackboard.get_input_il_fqs(dict()))
+        ret.update(self._blackboard.get_input_pe_fqs(dict()))
         if not ret and default is None:
-            raise UserException("no new fastq files were produced in this run")
+            raise UserException("no paired end fastq files were provided")
         return ret if ret else default
 
-    def get_contigs_path(self, default=None):
-        '''Return the path to the user provided contigs, or fail if no default.'''
-        ret = self._blackboard.get_contigs_path(default)
-        if ret is None:
-            raise UserException("no contigs file was provided")
-        return ret
+    def get_input_singles(self, default=None):
+        '''Return dict with all single ended.'''
+        ret = dict(self._blackboard.get_input_pe_fqs(dict()))
+        if not ret and default is None:
+            raise UserException("no paired end fastq files were provided")
+        return ret if ret else default
 
-    def get_fastqs_or_contigs_paths(self, default=None):
-        '''Return the fastqs or else the contigs in a list, or else default or fail.'''
-        ret = self._blackboard.get_fastq_paths(self._blackboard.get_contigs_path(default))
-        if ret is None:
-            raise UserException("no fastq or contigs files were provided")
-        return ret if isinstance(ret,list) else [ret]
+    def get_output_fastqs(self, default=None):
+        '''Analog of get_user_fastqs for produced (trimmed or otherwise) fastqs.'''
+        ret = dict()
+        for k,(f1,f2) in self._blackboard.get_output_pe_fqs(dict()).items():
+            ret['%s_R1' % k] = f1
+            ret['%s_R2' % k] = f2
+        for k,fq in self._blackboard.get_output_se_fqs(dict()).items():
+            ret[k] = fq
+        if not ret and default is None:
+            raise UserException("no fastq files were produced")
+        return ret if ret else default
 
     def get_reference_path(self, default=None):
         '''Return path to FASTA with the user provided reference or else the established one, or else default.'''
@@ -185,17 +193,17 @@ class ServiceExecution(Task):
 #   ServiceExecution specialisation for when the service spawns a number
 #   of jobs.  Method add_job adds a job to its collection.
 #   Derived classes must override collect_job and optionally cleanup_job,
-#   or may override collect_results which will be invoked when all done.
+#   or may override collect_results which will be invoked when all is done.
 
 class MultiJobExecution(ServiceExecution):
     '''A single execution of a service that spawn a number of jobs.'''
 
     _jobs = None
 
-    def __init__(self, svc_shim, svc_version, sid, xid, blackboard, scheduler):
+    def __init__(self, svc_shim, svc_version, sid, _xid, blackboard, scheduler):
         '''Construct execution with identity, blackboard and scheduler,
            passes rest on to super().'''
-        super().__init__(svc_shim, svc_version, sid, xid, blackboard, scheduler)
+        super().__init__(svc_shim, svc_version, sid, _xid, blackboard, scheduler)
         self._jobs = list()
 
     def add_job(self, jid, jspec, jdir, userdata = None):
@@ -226,7 +234,7 @@ class MultiJobExecution(ServiceExecution):
                     if any(j[0].state == Job.State.COMPLETED for j in self._jobs):
                         self.done()
                     else:
-                        self.fail('no successful %s job' % self.ident)
+                        self.fail('no successful jobs')
 
         # Return current state of execution as a whole
         return self.state
@@ -278,11 +286,11 @@ class MultiJobExecution(ServiceExecution):
 class UnimplementedService():
     '''Base unimplemented class, starts but then fails on first report.'''
 
-    def execute(self, sid, xid, blackboard, scheduler):
+    def execute(self, sid, _xid, blackboard, scheduler):
         return UnimplementedService.Execution( \
-                'unimplemented', '1.0.0', sid, xid, blackboard, scheduler)
+                'unimplemented', '1.0.0', sid, _xid, blackboard, scheduler)
 
     class Execution(ServiceExecution):
         def report(self):
-            return self.fail("service %s is not implemented", self.ident)
+            return self.fail("service %s is not implemented", self.sid)
 

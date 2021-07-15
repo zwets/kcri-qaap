@@ -17,24 +17,24 @@ SERVICE, VERSION = "FastQC", DEPS_VERSIONS['fastqc']
 class FastQCShim:
     '''Service shim that executes the backend.'''
 
-    def execute(self, sid, xid, blackboard, scheduler):
+    def execute(self, sid, _xid, blackboard, scheduler):
         '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = FastQCExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
+        task = FastQCExecution(SERVICE, VERSION, sid, _xid, blackboard, scheduler)
 
-         # Get the execution parameters from the blackboard
+         # Get the task parameters from the blackboard
         try:
-            fastqs = execution.get_all_user_fastqs().values() if Services(sid) == Services.FASTQC else \
-                     execution.get_all_new_fastqs().values() if Services(sid) == Services.POST_FASTQC else \
+            fastqs = task.get_input_fastqs().values() if Services(sid) == Services.FASTQC else \
+                     task.get_output_fastqs().values() if Services(sid) == Services.POST_FASTQC else \
                      None
 
-            if fastqs is None: raise Exception('unknown ident in FastQCShim: %s' % sid)
+            if fastqs is None: raise Exception('unknown service in FastQCShim: %s' % sid)
             if not fastqs: raise UserException('no fastq files to process')
 
             # Compute resources
             n_fq = len(fastqs)
-            max_par = int(execution._scheduler.max_mem * 4)    # each thread needs 250MB
-            cpu = min(execution._scheduler.max_cpu, len(fastqs), max_par)
+            max_par = int(task._scheduler.max_mem * 4)    # each thread needs 250MB
+            cpu = min(task._scheduler.max_cpu, len(fastqs), max_par)
             mem = cpu / 4               # each job 250M
             spc = n_fq / 10             # each job at most 100M
             tim = n_fq / cpu * 5 * 60   # each job at most 5 min
@@ -50,19 +50,19 @@ class FastQCShim:
             params.extend(fastqs)
 
             job_spec = JobSpec('fastqc', params, cpu, mem, spc, tim)
-            execution.store_job_spec(job_spec.as_dict())
-            execution.start(job_spec)
+            task.store_job_spec(job_spec.as_dict())
+            task.start(job_spec)
 
         # Failing inputs will throw UserException
         except UserException as e:
-            execution.fail(str(e))
+            task.fail(str(e))
 
         # Deeper errors additionally dump stack
         except Exception as e:
             logging.exception(e)
-            execution.fail(str(e))
+            task.fail(str(e))
 
-        return execution
+        return task
 
 
 # Single execution of the service
@@ -73,7 +73,7 @@ class FastQCExecution(ServiceExecution):
 
     def start(self, job_spec):
         if self.state == Task.State.STARTED:
-            self._job = self._scheduler.schedule_job('fastqc', job_spec, self.ident)
+            self._job = self._scheduler.schedule_job('fastqc', job_spec, self.sid)
 
     def collect_output(self, job):
         '''Collect the job output and put on blackboard.

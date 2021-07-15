@@ -2,124 +2,154 @@
 #
 # filescan.py - helper module to find FASTA and fastq files
 
-import sys, os, gzip, io, re
+import sys, os, gzip, shutil, io, re
 
-# Exit with error message and non-zero code
+# Regex patterns matching FASTA/Q file names and illumina read headers.
+# Note the question mark in (.*?) is to make the pattern non-greedy.
+GENERAL_PAT = re.compile('^(.*?)(\.f(q|astq|a|as|sa|na|asta))?(\.gz)?$')
+ILLUMINA_PAT = re.compile('^(.*?)_S[0-9]+_L[0-9]+_R[12]_[0-9]+\.fastq\.gz$')
+ILLUMINA_READ_PAT = re.compile(r'^@[^:]+:\d+:[^:]+:\d+:\d+:\d+:\d+ [12]:[YN]:\d+:[^:]+$')
+
 def err_exit(msg, *args):
+    '''Exit with error message and non-zero code.'''
     print(('QAAP: %s' % msg) % args, file=sys.stderr)
     sys.exit(1)
 
-# Detect whether file is (gzipped) fasta or fastq, or other
-def detect_filetype(fname):
-    with open(fname, 'rb') as f:
+def is_gzipped(fn):
+    '''Return True iff fn is a gzipped file.'''
+    with open(fn, 'rb') as f:
+        b = f.peek(2)
+        return b[:2] == b'\x1f\x8b'
+
+def gunzip_file(src, dst):
+    '''Unzip file src to file dst.'''
+    with gzip.open(src, mode='rb') as f_in:
+        with open(dst, 'wb') as f_out:
+             shutil.copyfileobj(f_in, f_out)
+
+def gunzip_or_symlink(src, dst):
+    '''If src is gzipped, unzip it, else symlink it to dst.'''
+    if is_gzipped(src):
+        gunzip(src, dst)
+    else:
+        os.symlink(src, dst)
+
+def detect_filetype(fn):
+    '''Detect whether file is (gzipped) fasta or fastq, or other.'''
+    with open(fn, 'rb') as f:
         b = f.peek(2)
         if b[:2] == b'\x1f\x8b':
             b = gzip.GzipFile(fileobj=f).peek(2)[:2]
         c = chr(b[0]) if len(b) > 0 else '\x00'
     return 'fasta' if c == '>' else 'fastq' if c == '@' else 'other'
 
-# True iff fname is a FASTA file
-def is_fasta_file(fname):
-    try: return os.path.isfile(fname) and detect_filetype(fname) == 'fasta'
+def is_fasta_file(fn):
+    '''True iff fn is a FASTA file.'''
+    try: return os.path.isfile(fn) and detect_filetype(fn) == 'fasta'
     except: return False
 
-# True iff fname is a FastQ file
-def is_fastq_file(fname):
-    try: return os.path.isfile(fname) and detect_filetype(fname) == 'fastq'
+def is_fastq_file(fn):
+    '''True iff fn is a FastQ file.'''
+    try: return os.path.isfile(fn) and detect_filetype(fn) == 'fastq'
     except: return False
 
-# True iff file names fn1 and fn2 are a read pair
 def is_fastq_pair(fn1, fn2):
+    '''True iff fn1 and fn2 differ only in having a 1 vs 2 in their base name,
+       following one of R, r, _, -, ., or @.  Should cover most cases.'''
     bn1, bn2 = map(os.path.basename, (fn1, fn2))
     pfx = os.path.commonprefix([bn1, bn2])
     sn1, sn2 = map(lambda s: s[len(pfx):], (bn1, bn2))
-    return sn1[0] == '1' and sn2[0] == '2' and sn1[1:] == sn2[1:]
+    return sn1[0] == '1' and sn2[0] == '2' and sn1[1:] == sn2[1:] and (not pfx or pfx[-1] in 'Rr._-@')
 
-# True iff fname has Illumina reads
-def is_illumina_fastq(fname):
-    pat = re.compile(r'^@[^:]+:\d+:[^:]+:\d+:\d+:\d+:\d+ [12]:[YN]:\d+:[^:]+$')
-    with open(fname, 'rb') as f:
-        b = f.peek(2)
-        buf = io.TextIOWrapper(gzip.GzipFile(fileobj=f) if b[:2] == b'\x1f\x8b' else f)
-        return re.match(pat, buf.readline())
+def is_illumina_fastq(fn):
+    '''True if either fn matches the illumina pattern, or the header is Illumina-like.'''
+    bn = os.path.basename(fn)
+    if re.fullmatch(ILLUMINA_PAT, bn):
+        return True
+    else:
+        with open(fn, 'rb') as f:
+            b = f.peek(2)
+            buf = io.TextIOWrapper(gzip.GzipFile(fileobj=f) if b[:2] == b'\x1f\x8b' else f)
+            return re.match(ILLUMINA_READ_PAT, buf.readline())
 
-# True iff dname is a proper miseq run output directory
-def is_miseq_output_dir(dname):
+def is_illumina_pair(fqs):
+    '''True iff the file tuple is a pair of Illumina reads.'''
+    return len(fqs) == 2 and all(map(is_illumina_fastq, fqs))
+
+def is_ilumina_output_dir(dname):
+    '''True iff dname is a proper ilumina run output directory.'''
     return os.path.isfile(os.path.join(dname, 'InterOp')) and \
            os.path.isfile(os.path.join(dname, 'RunInfo.xml')) and \
            os.path.isfile(os.path.join(dname, 'runParameters.xml'))
 
-# Iterates arbitrary list of file names, returns fastq singletons and/or pairs
 def iter_fastqs(fns):
+    '''Iterates arbitrary list of file names, returns fastq singletons and/or pairs.'''
     prev = None
     for this in sorted(filter(is_fastq_file, fns), key=os.path.basename):
         if prev: # try for pair, if so return tuple prev, this 
             if is_fastq_pair(prev, this):
-                yield (prev, os.path.abspath(this))
+                yield (prev, this)
                 prev = None
             else: # return the previous as singleton, hold this
                 yield prev
-                prev = os.path.abspath(this)
+                prev = this
         else: # hold this to see if next pairs
-            prev = os.path.abspath(this)
+            prev = this
     if prev: # return the last held as singleton
         yield prev
 
-# Add key, value to dict, erroring out if key already there
-def add_to_dict(d, k, v):
-    if k in d:
-        err_exit('duplicate sample name: %s for files %s and %s' % (k, v, d[k]))
-    else:
-        d[k] = v
-
-# Patterns matching FASTA/Q file names
-# Note the question mark in (.*?) makes the pattern non-greedy; (.*) would
-# eat up everything including the optional suffixes.
-illumina_pat = re.compile('^(.*?)_S[0-9]+_L[0-9]+_R[12]_[0-9]+\.fastq\.gz$')
-general_pat = re.compile('^(.*?)(\.f(q|astq|a|as|sa|na|asta))?(\.gz)?$')
-
-# Return base name for FASTA / singleton FASTQ, stripping extensions,
-# and if illumina read, also everything from _S 
 def make_sample_name(fn):
+    '''Return base name for FASTA / singleton FASTQ, stripping extensions,
+       and if illumina read, also everything from _S.'''
     bn = os.path.basename(fn)
-    mat = re.fullmatch(illumina_pat, bn)
-    if not mat: mat = re.fullmatch(general_pat, bn)
+    mat = re.fullmatch(ILLUMINA_PAT, bn)
+    if not mat: mat = re.fullmatch(GENERAL_PAT, bn)
     return mat.group(1) if mat else bn
 
-# Return base name for FASTQ pair, stripping extensions and read indicator,
-# and if illumina read, also everything from _S
-def make_pair_name(fq1, fq2):
-    bn1, bn2 = map(os.path.basename, (fq1, fq2))
-    mat = re.fullmatch(illumina_pat, bn1)
+def make_pair_name(fqpair):
+    '''Return base name for FASTQ pair, stripping extensions and read indicator,
+       and if illumina read, also everything from _S.'''
+    bn1, bn2 = map(os.path.basename, fqpair)
+    mat = re.fullmatch(ILLUMINA_PAT, bn1)
     if mat:
         return mat.group(1)
     else:
         pfx = os.path.commonprefix([bn1, bn2])
         return pfx.rstrip('R').rstrip('._-@')
 
-# Return all fastq files among list of file names as (singles, pairs), where
-# - singles is dict sample_name -> file_path
-# - pairs is dict sample_name -> (file_path_r1, file_path_r2)
+def add_to_dict(d, k, v):
+    '''Add key, value to dict, erroring out if key already there.'''
+    if k in d:
+        err_exit('duplicate key: %s for values files %s and %s' % (k, v, d[k]))
+    else:
+        d[k] = v
+
+# Return all fastq files among list of file names as a three-tuple:
+# - illumina_pairs, a dict sample_name -> (file_path_r1, file_path_r2)
+# - other_pairs, a dict sample_name -> (file_path_r1, file_path_r2)
+# - singles, a dict sample_name -> file_path
 def scan_fastqs(fns):
-    singles = dict()
+    illums = dict()
     pairs = dict()
+    singles = dict()
     for it in iter_fastqs(fns):
         if type(it) == tuple:
-            add_to_dict(pairs, make_pair_name(it[0],it[1]), it)
+            if is_illumina_pair(it):
+                add_to_dict(illums, make_pair_name(it), it)
+            else:
+                add_to_dict(pairs, make_pair_name(it), it)
         else:
             add_to_dict(singles, make_sample_name(it), it)
-    return (singles, pairs)
+    return (illums, pairs, singles)
 
-# Return dict of fasta files among list of file name fns, keyed by sample name
 def scan_fastas(fns):
+    '''Return dict of fasta files among list of file name fns, keyed by sample name.'''
     fastas = dict()
     for it in filter(is_fasta_file, fns):
         add_to_dict(fastas, make_sample_name(it), it)
     return fastas
 
-# Return tuple (fastas, single_fqs, paired_fqs) for list of file names, where
-# - fastas and single_fqs are both dict sample_name -> file_path
-# - paired_fqs is dict sample_name -> (file_path_r1, file_path_r2)
+# Same as scan_fastqs, with fastas appended to the tuple.
 # When strict, every file name must be either fasta or fastq
 def scan_inputs(fns, strict=False):
     lst = list(fns)  # put in list as fns may be iterator, and we need 2 passes
@@ -127,9 +157,28 @@ def scan_inputs(fns, strict=False):
         f = next(filter(lambda x: not is_fastq_file(x) and not is_fasta_file(x), lst), None)
         if f: err_exit('invalid input: file is neither FASTA nor fastq: %s', f)
     fqs = scan_fastqs(lst)
-    return (scan_fastas(lst), fqs[0], fqs[1])
+    return (fqs[0], fqs[1], fqs[2], scan_fastas(fns))
 
 # Runs scan_inputs over the files in directory dname, see scan_inputs for retval
 def find_inputs(dname):
     return scan_inputs(map(lambda de: de.path, filter(lambda de: de.is_file, os.scandir(dname))))
+
+def make_symlink(dst_dir, fn, sn):
+    '''Create symlink to fn from sn, appending .gz if fn has .gz, return the link name.'''
+    link_fn = os.path.join(dst_dir, sn)
+    if fn.endswith('.gz'): link_fn += '.gz'
+    if os.path.exists(link_fn): os.unlink(link_fn)
+    os.symlink(os.path.abspath(fn), link_fn)
+    return os.path.abspath(link_fn)
+
+def symlink_input_pairs(dst_dir, dic):
+    '''For each key in dic, make symlinks key_R1.fq and key_R2.fq in dst_dir pointing to fq1 and fq2,
+       return new dict having the mapping to the symlinks.'''
+    return dict((k,(make_symlink(dst_dir, f1, k+'_R1.fq'),
+                    make_symlink(dst_dir, f2, k+'_R2.fq'))) for k,(f1,f2) in dic.items())
+
+def symlink_input_files(dst_dir, dic, ext):
+    '''For each key in dic, make symlink key.ext in dst_dir pointing to fn.
+       Return dict like dic but mapping the keys to the (absolute) symlinks.'''
+    return dict((k,make_input_symlink(dst_dir, fn, k+ext)) for k,fn in dic.items())
 

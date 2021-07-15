@@ -32,8 +32,8 @@ class Params(pico.workflow.logic.Params):
     READS = 'reads'             # User has provided fastq files
     FASTA = 'fasta'             # User has provided fasta files
     META = 'meta'               # All data is metagenomic
-    MISEQ_READS = 'miseq-reads' # All reads are MiSeq reads
     MISEQ_RUN = 'miseq-run'     # We are analysing a full MiSeq run (miseq_run_dir)
+    MISEQ_READS = 'miseq-reads' # All reads are MiSeq reads
 
 class Checkpoints(pico.workflow.logic.Checkpoints):
     '''Internal targets for other targets to depend on.  Useful when a service

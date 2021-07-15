@@ -35,7 +35,7 @@ SERVICES = {
     Services.QUAST:             QuastShim(),
     Services.POST_FASTQC:       FastQCShim(),       # Same as non-post, they
     Services.POST_FASTQSCREEN:  FastQScreenShim(),  # can tell difference by
-    Services.POST_READSMETRICS: ReadsMetricsShim(), # the 'ident' parameter
+    Services.POST_READSMETRICS: ReadsMetricsShim(), # the 'sid' parameter
     Services.READSMETRICS:      ReadsMetricsShim(),
     Services.SKESA:             SKESAShim(),
     Services.SPADES:            SPAdesShim(),

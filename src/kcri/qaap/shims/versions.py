@@ -4,12 +4,12 @@
 # Used by the shims to report their backend version.
 #
 DEPS_VERSIONS = dict()
-DEPS_VERSIONS["picoline"] = "1.3.0"
+DEPS_VERSIONS["picoline"] = "1.3.1"
 DEPS_VERSIONS["fastq-utils"] = "1.2.0"
 DEPS_VERSIONS["skesa"] = "skesa.2.4.0_saute.1.3.0"
 DEPS_VERSIONS["unicycler"] = "v0.4.9"
 DEPS_VERSIONS["unfasta"] = "1.2.0"
-DEPS_VERSIONS["kneaddata"] = "0.10.0-4-gf857"
+DEPS_VERSIONS["kneaddata"] = "0.10.0-7-gc721"
 DEPS_VERSIONS["fastqc"] = "0.11.9"
 DEPS_VERSIONS["fastq-screen"] = "0.14.1"
 DEPS_VERSIONS["ncbi-blast"] = "2.11.0"

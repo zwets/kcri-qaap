@@ -24,8 +24,8 @@ class FastQScreenShim:
 
          # Get the execution parameters from the blackboard
         try:
-            fastqs = execution.get_all_user_fastqs().values() if Services(sid) == Services.FASTQSCREEN else \
-                     execution.get_all_new_fastqs().values() if Services(sid) == Services.POST_FASTQSCREEN else \
+            fastqs = execution.get_input_fastqs().values() if Services(sid) == Services.FASTQSCREEN else \
+                     execution.get_output_fastqs().values() if Services(sid) == Services.POST_FASTQSCREEN else \
                      None
 
             if fastqs is None: raise Exception('unknown ident in FastQScreenShim: %s' % sid.value)
@@ -72,7 +72,7 @@ class FastQScreenExecution(ServiceExecution):
 
     def start(self, job_spec):
         if self.state == Task.State.STARTED:
-            self._job = self._scheduler.schedule_job('fastq-screen', job_spec, self.ident)
+            self._job = self._scheduler.schedule_job('fastq-screen', job_spec, self.sid)
 
     def collect_output(self, job):
         '''Collect the job output and put on blackboard.

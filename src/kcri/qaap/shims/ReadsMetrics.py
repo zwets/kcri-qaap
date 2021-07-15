@@ -23,37 +23,37 @@ MAX_TIM = 5 * 60
 class ReadsMetricsShim:
     '''Service shim that executes the backend.'''
 
-    def execute(self, sid, xid, blackboard, scheduler):
+    def execute(self, sid, _xid, blackboard, scheduler):
         '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = ReadsMetricsExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
+        task = ReadsMetricsExecution(SERVICE, VERSION, sid, _xid, blackboard, scheduler)
 
-        # From here we catch exception and execution will FAIL
+        # From here we catch exception and task will FAIL
         try:
-            fastqs = execution.get_all_user_fastqs() if Services(sid) == Services.READSMETRICS else \
-                     execution.get_all_new_fastqs() if Services(sid) == Services.POST_READSMETRICS else \
+            fastqs = task.get_input_fastqs() if Services(sid) == Services.READSMETRICS else \
+                     task.get_output_fastqs() if Services(sid) == Services.POST_READSMETRICS else \
                      None
 
-            if fastqs is None: raise Exception('unknown ident in ReadsMetricsShim: %s' % ident.value)
+            if fastqs is None: raise Exception('unknown service in ReadsMetricsShim: %s' % sid)
             if not fastqs: raise UserException('no fastq files to process')
 
-            execution.start(fastqs)
+            task.start(fastqs)
 
         # Failing inputs will throw UserException
         except UserException as e:
-            execution.fail(str(e))
+            task.fail(str(e))
 
         # Deeper errors additionally dump stack
         except Exception as e:
             logging.exception(e)
-            execution.fail(str(e))
+            task.fail(str(e))
 
-        return execution
+        return task
 
 # Single execution of the service
 class ReadsMetricsExecution(MultiJobExecution):
-    '''A single execution of the service, returned by execute(),
-       schedules a job for every fastq file in the fq_dict'''
+    '''The single execution of service sid in workflow execution _xid (None).
+       Schedules a job for every fastq file in the xid.'''
 
     def start(self, fastqs):
         if self.state == Task.State.STARTED:
@@ -65,7 +65,7 @@ class ReadsMetricsExecution(MultiJobExecution):
 
                 # We add the fid as userdata, so we can use it in collect_output
                 self.store_job_spec(job_spec.as_dict())
-                self.add_job('fastq-stats_%s' % fid, job_spec, self.ident, fid)
+                self.add_job('fastq-stats-%s' % fid, job_spec, '%s/%s' % (self.sid, fid), fid)
 
     @staticmethod
     def parse_line(line):

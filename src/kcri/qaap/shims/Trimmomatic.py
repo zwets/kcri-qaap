@@ -23,8 +23,8 @@ class TrimmomaticShim:
         execution = TrimmomaticExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
 
         try:
-            pe_fqs = blackboard.get_paired_fqs(dict())
-            se_fqs = blackboard.get_single_fqs(dict())
+            pe_fqs = execution.get_input_pairs(dict())
+            se_fqs = execution.get_input_singles(dict())
 
             if not pe_fqs and not se_fqs:
                 UserException('no fastq files to process')
@@ -86,7 +86,7 @@ class TrimmomaticExecution(MultiJobExecution):
         params.extend(['ILLUMINACLIP:%s:2:30:10:1:true'%adap,'LEADING:3','TRAILING:3','SLIDINGWINDOW:4:%d'%min_q, 'MINLEN:%d'%min_l])
         job_spec = JobSpec('trimmomatic', params, cpu, mem, spc, 10*60)
         self.store_job_spec(job_spec.as_dict())
-        self.add_job('trimmomatic-pe_%s'%fid, job_spec, '%s/pe/%s'%(self.ident,fid), udata)
+        self.add_job('trimmomatic-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.sid,fid), udata)
 
     def schedule_se_job(self, fid, fq, min_q, min_l, adap, cpu, mem, spc):
 
@@ -96,7 +96,7 @@ class TrimmomaticExecution(MultiJobExecution):
         params.extend(['ILLUMINACLIP:%s:2:30:10:1:true'%adap,'LEADING:3','TRAILING:3','SLIDINGWINDOW:4:%d','MINLEN:%d'%(min_q, min_l)])
         job_spec = JobSpec('trimmomatic', params, cpu, mem, spc, 5*60)
         self.add_job_spec('se/%s'%fid, job_spec.as_dict())
-        self.add_job('trimmomatic-se_%s'%fid, job_spec, '%s/se/%s'%(self.ident,fid), udata)
+        self.add_job('trimmomatic-se_%s' % fid, job_spec, '%s/se/%s' % (self.sid,fid), udata)
 
     @staticmethod
     def parse_line(line):
