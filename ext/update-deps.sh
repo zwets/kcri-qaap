@@ -64,9 +64,10 @@ grep -E '^ *[^#]' "$CFG_FILE" | while read NAME VER URL REST; do
 
         GIT_OLD="$(git describe --dirty --broken --tags --abbrev=1 --always)"
 
-        git checkout -q master && git pull -q --ff-only --tags 2>/dev/null ||
-        git checkout -q main && git pull -q --ff-only --tags ||
-        err_exit "failed to pull master or main (sigh) for: $NAME"
+        # Cater for projects forking off their master branch (sigh)
+        git checkout -q main 2>/dev/null || 
+        git checkout -q master && git pull -q --ff-only --tags ||
+        err_exit "failed to pull either main or master for: $NAME"
 
         GIT_MASTER="$(git describe --dirty --broken --tags --abbrev=1 --always)"
        
