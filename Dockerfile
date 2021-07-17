@@ -73,8 +73,7 @@ RUN conda config --add channels bioconda && \
 # Python dependencies via pip
 # - These are in Conda, but dependency issues when installingg
 RUN pip install \
-        cutadapt \
-        multiqc
+        cutadapt
 
 # SKESA, BLAST, Quast are available in the 'bioconda' channel, but yield
 # myriad dependency conflicts, hence we install them from source.
@@ -167,10 +166,10 @@ RUN cd ext/interop && \
     cp bin/index-summary /usr/local/bin/interop_index-summary && \
     cd .. && rm -rf interop
 
-## Install multiqc
-#RUN cd ext/multiqc && \
-#    python setup.py install && \
-#    rm -rf build
+# Install multiqc
+RUN cd ext/multiqc && \
+    python setup.py install && \
+    rm -rf build
 
 
 # Install the QAAP code
