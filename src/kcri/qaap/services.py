@@ -21,6 +21,7 @@ from .shims.Quast import QuastShim
 from .shims.ReadsMetrics import ReadsMetricsShim
 from .shims.SKESA import SKESAShim
 from .shims.SPAdes import SPAdesShim
+from .shims.TrimGalore import TrimGaloreShim
 from .shims.Trimmomatic import TrimmomaticShim
 from .shims.Unicycler import UnicyclerShim
 from .shims.base import UnimplementedService
@@ -39,6 +40,7 @@ SERVICES = {
     Services.READSMETRICS:      ReadsMetricsShim(),
     Services.SKESA:             SKESAShim(),
     Services.SPADES:            SPAdesShim(),
+    Services.TRIMGALORE:        TrimGaloreShim(),
     Services.TRIMMOMATIC:       TrimmomaticShim(),
     Services.UNICYCLER:         UnicyclerShim()
 }

@@ -189,8 +189,10 @@ per line, in a text file and pass this file with @FILENAME.
 
     # Set the workflow params based on user inputs present
     params = list()
+    if illumina_run_dir:
+        params.append(Params.ILLUM_RUN)
     if il_fqs:
-        params.append(Params.MISEQ_READS)
+        params.append(Params.ILLUM_READS)
         params.append(Params.READS)
         blackboard.put_input_il_fqs(il_fqs)
     if pe_fqs:

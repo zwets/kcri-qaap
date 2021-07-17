@@ -21,6 +21,7 @@ FROM continuumio/miniconda3:4.9.2
 # - default-jre for FastQC and Trimmomatic (and the mkdir for it)
 # - bowtie2, samtools, gd-graph for FastQ-Screen
 # - trf for KneadData
+# - pigz for trim-galore
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get -qq update --fix-missing && \
@@ -28,7 +29,7 @@ RUN apt-get -qq update --fix-missing && \
     dpkg --configure -a && \
     mkdir /usr/share/man/man1 && \
     apt-get -qq install --no-install-recommends \
-        make g++ libz-dev \
+        make g++ libz-dev pigz \
         default-jre-headless \
         gawk \
         libboost-program-options-dev \
@@ -54,7 +55,8 @@ RUN echo "unset HISTFILE" >>/etc/bash.bashrc && \
 # Python dependencies via Conda:
 # - Install nomkl to prevent MKL being installed; we don't currently
 #   use it, it's huge, and it is non-free (why does Conda pick it?)
-# - Picoline requires psutil
+# - psutil for picoline
+# - cutadapt from trim_galore (is also in Debian, but older?)
 # - trf for fastq-screen, is not in Debian
 
 #RUN conda config --add channels bioconda && \
@@ -63,14 +65,15 @@ RUN echo "unset HISTFILE" >>/etc/bash.bashrc && \
 RUN conda config --add channels bioconda && \
     conda install \
         nomkl \
-        trf \
-        psutil && \
+        psutil \
+        trf && \
     conda list && \
     conda clean -qy --tarballs
 
 # Python dependencies via pip
 # - These are in Conda, but dependency issues when installingg
 RUN pip install \
+        cutadapt \
         multiqc
 
 # SKESA, BLAST, Quast are available in the 'bioconda' channel, but yield
@@ -94,7 +97,7 @@ COPY ext ext
 ENV PATH=/usr/src/ext/ncbi-blast/bin:$PATH \
     BLAST_USAGE_REPORT=false
 
-# Install uf-stats by putting it on the PATH.
+# Install uf and uf-stats by putting them on the PATH.
 ENV PATH=/usr/src/ext/unfasta:$PATH
 
 # Make and install skesa
@@ -109,17 +112,20 @@ RUN cd ext/fastq-utils && \
     cp fastq-stats /usr/local/bin/ && \
     cd .. && rm -rf fastq-utils
 
+# Install fastqc by symlinking
+RUN cd ext/fastqc && \
+    chmod +x fastqc && \
+    ln -sft /usr/local/bin /usr/src/ext/fastqc/fastqc
+
+# Install trim_galore by copying it to /usr/local/bin
+RUN mv ext/trim-galore/trim_galore /usr/local/bin
+
 # Install trimmomatic (the weird awk is to force eol on last line of fa)
 RUN cd ext/trimmomatic && \
     awk 1 adapters/NexteraPE-PE.fa adapters/TruSeq3-PE-2.fa >adapters/default-PE.fa && \
     printf '#!/bin/sh\nexec java -jar /usr/src/ext/trimmomatic/%s "$@"\n' $(ls *.jar) \
     > /usr/local/bin/trimmomatic && \
     chmod +x /usr/local/bin/trimmomatic
-
-# Install fastqc by symlinking
-RUN cd ext/fastqc && \
-    chmod +x fastqc && \
-    ln -sft /usr/local/bin /usr/src/ext/fastqc/fastqc
 
 # Install fastq-screen by adding it to the PATH
 ENV PATH=/usr/src/ext/fastq-screen:$PATH
@@ -133,7 +139,6 @@ RUN cd ext/kneaddata && \
 RUN cd ext/spades && \
     bin/spades.py --test && \
     rm -rf spades_test
-
 ENV PATH=/usr/src/ext/spades/bin:$PATH
 
 # Install spades-uni (old version for Unicycler, pass with --spades_path)
@@ -161,6 +166,11 @@ RUN cd ext/interop && \
     cp bin/summary /usr/local/bin/interop_summary && \
     cp bin/index-summary /usr/local/bin/interop_index-summary && \
     cd .. && rm -rf interop
+
+## Install multiqc
+#RUN cd ext/multiqc && \
+#    python setup.py install && \
+#    rm -rf build
 
 
 # Install the QAAP code

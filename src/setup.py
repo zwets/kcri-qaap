@@ -35,7 +35,7 @@ setup(
     include_package_data = True,
     #test_suite="tests",
     license = 'GNU General Public License v3',
-    classifiers = ['License :: OSI Approved :: GPL v3'],
+    classifiers = ['License :: OSI Approved :: GNU General Public License v3 (GPLv3)'],
     zip_safe = False
     )
 

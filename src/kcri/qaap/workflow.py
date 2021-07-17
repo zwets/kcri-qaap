@@ -32,8 +32,8 @@ class Params(pico.workflow.logic.Params):
     READS = 'reads'             # User has provided fastq files
     FASTA = 'fasta'             # User has provided fasta files
     META = 'meta'               # All data is metagenomic
-    MISEQ_RUN = 'miseq-run'     # We are analysing a full MiSeq run (miseq_run_dir)
-    MISEQ_READS = 'miseq-reads' # All reads are MiSeq reads
+    ILLUM_RUN = 'illum-run'     # We are analysing a full MiSeq run (miseq_run_dir)
+    ILLUM_READS = 'illum-reads' # All reads are Illumina reads
 
 class Checkpoints(pico.workflow.logic.Checkpoints):
     '''Internal targets for other targets to depend on.  Useful when a service
@@ -59,6 +59,7 @@ class Services(pico.workflow.logic.Services):
     READSMETRICS = 'ReadsMetrics'
     SKESA = 'SKESA'
     SPADES = 'SPAdes'
+    TRIMGALORE = 'TrimGalore'
     TRIMMOMATIC = 'Trimmomatic'
     UNICYCLER = 'Unicycler'
 
@@ -110,7 +111,7 @@ DEPENDENCIES = {
                                      Services.KNEADDATA,
                                      OPT( SystemTargets.POST_QC ) ),
     UserTargets.TRIM:           SEQ( OPT( UserTargets.READS_QC ),
-                                     Services.TRIMMOMATIC,
+                                     ONE( Services.TRIMGALORE, Services.TRIMMOMATIC ),
                                      OPT( SystemTargets.POST_QC ) ),
     UserTargets.ASSEMBLE:       ONE( Services.SKESA, Services.SPADES, Services.UNICYCLER ),
     UserTargets.POLISH:         Services.UNICYCLER,
@@ -127,7 +128,7 @@ DEPENDENCIES = {
     Services.CONTIGSMETRICS:	OIF( Checkpoints.CONTIGS ),
     Services.FASTQC:	        Params.READS,
     Services.FASTQSCREEN:	    Params.READS,
-    Services.INTEROP:	        Params.MISEQ_RUN,
+    Services.INTEROP:	        Params.ILLUM_RUN,
     Services.KNEADDATA:         ALL( Params.META, Params.READS ),
     Services.MULTIQC:	        ALL(), # No dependencies
     Services.QUAST:	            OIF( Checkpoints.CONTIGS ),
@@ -135,16 +136,17 @@ DEPENDENCIES = {
     Services.POST_FASTQSCREEN:	OIF( Checkpoints.NEWREADS ),
     Services.POST_READSMETRICS:	OIF( Checkpoints.NEWREADS ),
     Services.READSMETRICS:	    Params.READS,
-    Services.SKESA:	            ALL( ONE( Params.MISEQ_READS, Params.MISEQ_RUN ), Params.READS ),
+    Services.SKESA:	            ALL( ONE( Params.ILLUM_READS, Params.ILLUM_RUN ), Params.READS ),
     Services.SPADES:	        ALL( Params.READS, Services.TRIMMOMATIC ),
-    Services.TRIMMOMATIC:	    Params.READS,
+    Services.TRIMGALORE:	    Params.READS,
+    Services.TRIMMOMATIC:	    ALL( ONE( Params.ILLUM_READS, Params.ILLUM_RUN ), Params.READS ),
     Services.UNICYCLER:	        Params.READS,
 
     # Checkpoints
 
     Checkpoints.CONTIGS:        ONE( Params.FASTA, Checkpoints.ASSEMBLED ),
     Checkpoints.ASSEMBLED:      ONE( Services.SKESA, Services.SPADES, Services.UNICYCLER ),
-    Checkpoints.NEWREADS:       ONE( Services.TRIMMOMATIC, Services.KNEADDATA )
+    Checkpoints.NEWREADS:       ONE( Services.TRIMGALORE, Services.TRIMMOMATIC, Services.KNEADDATA )
 }
 
 # Consistency check on the DEPENDENCIES definitions
