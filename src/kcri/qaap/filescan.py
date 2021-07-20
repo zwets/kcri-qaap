@@ -7,7 +7,7 @@ import sys, os, gzip, shutil, io, re
 # Regex patterns matching FASTA/Q file names and illumina read headers.
 # Note the question mark in (.*?) is to make the pattern non-greedy.
 GENERAL_PAT = re.compile('^(.*?)(\.f(q|astq|a|as|sa|na|asta))?(\.gz)?$')
-ILLUMINA_PAT = re.compile('^(.*?)_S[0-9]+_L[0-9]+_R[12]_[0-9]+\.fastq\.gz$')
+ILLUMINA_FILE_PAT = re.compile('^(.*?)_S[0-9]+_L[0-9]+_R[12]_[0-9]+\.fastq\.gz$')
 ILLUMINA_READ_PAT = re.compile(r'^@[^:]+:\d+:[^:]+:\d+:\d+:\d+:\d+ [12]:[YN]:\d+:[^:]+$')
 
 def err_exit(msg, *args):
@@ -64,7 +64,7 @@ def is_fastq_pair(fn1, fn2):
 def is_illumina_fastq(fn):
     '''True if either fn matches the illumina pattern, or the header is Illumina-like.'''
     bn = os.path.basename(fn)
-    if re.fullmatch(ILLUMINA_PAT, bn):
+    if re.fullmatch(ILLUMINA_FILE_PAT, bn):
         return True
     else:
         with open(fn, 'rb') as f:
@@ -102,7 +102,7 @@ def make_sample_name(fn):
     '''Return base name for FASTA / singleton FASTQ, stripping extensions,
        and if illumina read, also everything from _S.'''
     bn = os.path.basename(fn)
-    mat = re.fullmatch(ILLUMINA_PAT, bn)
+    mat = re.fullmatch(ILLUMINA_FILE_PAT, bn)
     if not mat: mat = re.fullmatch(GENERAL_PAT, bn)
     return mat.group(1) if mat else bn
 
@@ -110,7 +110,7 @@ def make_pair_name(fqpair):
     '''Return base name for FASTQ pair, stripping extensions and read indicator,
        and if illumina read, also everything from _S.'''
     bn1, bn2 = map(os.path.basename, fqpair)
-    mat = re.fullmatch(ILLUMINA_PAT, bn1)
+    mat = re.fullmatch(ILLUMINA_FILE_PAT, bn1)
     if mat:
         return mat.group(1)
     else:
@@ -180,5 +180,5 @@ def symlink_input_pairs(dst_dir, dic):
 def symlink_input_files(dst_dir, dic, ext):
     '''For each key in dic, make symlink key.ext in dst_dir pointing to fn.
        Return dict like dic but mapping the keys to the (absolute) symlinks.'''
-    return dict((k,make_input_symlink(dst_dir, fn, k+ext)) for k,fn in dic.items())
+    return dict((k,make_symlink(dst_dir, fn, k+ext)) for k,fn in dic.items())
 

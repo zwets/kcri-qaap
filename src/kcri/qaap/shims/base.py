@@ -87,6 +87,10 @@ class ServiceExecution(Task):
         '''Store the service parameters for a one-job service on the blackboard.'''
         self.put_task_info('job', jobspec)
 
+    def add_job_spec(self, jid, jobspec):
+        '''Store the service parameters for a one-job service on the blackboard.'''
+        self.put_task_info('jobs/%s' % jid, jobspec)
+
     def store_results(self, result):
         '''Store the service results on the blackboard.'''
         self._blackboard.put('services/%s/results' % (self.sid), result)
@@ -163,9 +167,9 @@ class ServiceExecution(Task):
 
     def get_input_singles(self, default=None):
         '''Return dict with all single ended.'''
-        ret = dict(self._blackboard.get_input_pe_fqs(dict()))
+        ret = dict(self._blackboard.get_input_se_fqs(dict()))
         if not ret and default is None:
-            raise UserException("no paired end fastq files were provided")
+            raise UserException("no single end fastq files were provided")
         return ret if ret else default
 
     def get_output_fastqs(self, default=None):

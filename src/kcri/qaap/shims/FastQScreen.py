@@ -42,6 +42,7 @@ class FastQScreenShim:
             # Set up parameters
             params = [
                 '--outdir', '.',
+                '--force',
                 '--quiet',
                 '--threads', cpu
             ]

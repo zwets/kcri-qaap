@@ -9,6 +9,12 @@ import os, enum
 from datetime import datetime
 from pico.workflow.blackboard import Blackboard
 
+### Constant Enums
+
+class Platform(enum.Enum):
+    MISEQ = 'MiSeq'
+    NEXTSEQ = 'NextSeq'
+    IGNORE = 'ignore'
 
 ### QAAPBlackboard class
 #
@@ -81,6 +87,15 @@ class QAAPBlackboard(Blackboard):
     def get_reference_path(self, default=None):
         return self.get_user_input('reference', default)
 
+    def put_platform(self, platform):
+        return self.put_user_input('platform', platform.value)
+
+    def is_miseq(self):
+        return self.get_user_input('platform', None) == Platform.MISEQ.value
+
+    def is_nextseq(self):
+        return self.get_user_input('platform', None) == Platform.NEXTSEQ.value
+
     def is_metagenomic(self):
         return self.get_user_input('metagenomic', False)
 
@@ -91,7 +106,10 @@ class QAAPBlackboard(Blackboard):
         return self.get_user_input('tr_q', 20 if self.is_metagenomic() else 10)
 
     def get_trim_min_l(self):
-        return self.get_user_input('tr_l', 72 if self.is_metagenomic() else 36)
+        return self.get_user_input('tr_l', 48 if self.is_metagenomic() else 36)
+
+    def get_trim_min_o(self):
+        return self.get_user_input('tr_o', 6 if self.is_metagenomic() else 5)
 
     def get_trimmomatic_adapters(self, which):  # which is PE or SE
         bn = self.get_user_input('tr_a')
