@@ -292,3 +292,13 @@ class QAAPBlackboard(Blackboard):
         '''Return the dict with all cleaned SE fastqs.'''
         return self.get_qaap_output('cleaned_se_fqs', default)
 
+    # QAAP outputs - FASTA (contigs)
+
+    def add_assembled_fasta(self, fid, fa):
+        '''Store path to the assembly and make symlinks in the output dir.'''
+        self.put_qaap_output('assemblies/%s' % fid, self.symlink_output_file('assembled', fid, fa, '.fa'))
+
+    def get_assembled_fastas(self, default=None):
+        '''Return the dict with all assembled contigs files.'''
+        return self.get_qaap_output('assemblies', default)
+

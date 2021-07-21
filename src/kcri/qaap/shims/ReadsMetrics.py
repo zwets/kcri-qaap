@@ -19,7 +19,7 @@ MAX_MEM = 0.01
 MAX_SPC = 0.001
 MAX_TIM = 5 * 60
 
-
+# The Service shim class
 class ReadsMetricsShim:
     '''Service shim that executes the backend.'''
 
@@ -31,7 +31,8 @@ class ReadsMetricsShim:
         # From here we catch exception and task will FAIL
         try:
             fastqs = task.get_input_fastqs() if Services(sid) == Services.READSMETRICS else \
-                     task.get_output_fastqs() if Services(sid) == Services.POST_READSMETRICS else \
+                     task.get_trimmed_fastqs() if Services(sid) == Services.TRIMMED_READSMETRICS else \
+                     task.get_cleaned_fastqs() if Services(sid) == Services.CLEAN_READSMETRICS else \
                      None
 
             if fastqs is None: raise Exception('unknown service in ReadsMetricsShim: %s' % sid)
@@ -76,6 +77,9 @@ class ReadsMetricsExecution(MultiJobExecution):
                 l[1])
 
     def collect_job(self, results, job, fid):
-        with open(job.stdout) as f:
-            results[fid] = dict(map(self.parse_line, f))
+        try:
+            with open(job.stdout) as f:
+                results[fid] = dict(map(self.parse_line, f))
+        except Exception as e:
+            self.fail("failed to process job output (%s): %s", job.stdout, str(e))
 

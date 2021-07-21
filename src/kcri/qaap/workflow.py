@@ -38,9 +38,10 @@ class Params(pico.workflow.logic.Params):
 class Checkpoints(pico.workflow.logic.Checkpoints):
     '''Internal targets for other targets to depend on.  Useful when a service
        takes an input that could come either from user or as a service output.'''
-    ASSEMBLED = 'assembled'     # Assembly was performed
-    CONTIGS = 'contigs'         # Either FASTA was passed or assembly done
-    NEWREADS = 'newreads'       # New reads were produced by trimming or otherwise
+    ASSEMBLED = 'assembled'         # Assembly was performed
+    CONTIGS = 'contigs'             # Either FASTA was passed or assembly done
+    TRIMMED_READS = 'trimmed-reads' # New reads were produced by trimming
+    CLEANED_READS = 'cleaned-reads' # New reads were produced by cleaning
 
 class Services(pico.workflow.logic.Services):
     '''Enum that identifies the available services.  Each corresponds to a shim
@@ -53,9 +54,11 @@ class Services(pico.workflow.logic.Services):
     KNEADDATA = 'KneadData'
     MULTIQC = 'MultiQC'
     QUAST = 'Quast'
-    POST_FASTQC = 'PostFastQC'
-    POST_FASTQSCREEN = 'PostFastQScreen'
-    POST_READSMETRICS = 'PostReadsMetrics'
+    TRIMMED_FASTQC = 'TrimmedFastQC'
+    TRIMMED_READSMETRICS = 'TrimmedReadsMetrics'
+    CLEAN_FASTQC = 'CleanFastQC'
+    CLEAN_FASTQSCREEN = 'CleanFastQScreen'
+    CLEAN_READSMETRICS = 'CleanReadsMetrics'
     READSMETRICS = 'ReadsMetrics'
     SKESA = 'SKESA'
     SPADES = 'SPAdes'
@@ -119,34 +122,37 @@ DEPENDENCIES = {
     # SystemTargets
 
     SystemTargets.MULTIQC:      Services.MULTIQC,
-    SystemTargets.POST_QC:      ALL( OPT( Services.POST_READSMETRICS ),
-                                     OPT( Services.POST_FASTQC ),
-                                     OPT( Services.POST_FASTQSCREEN ) ),
+    SystemTargets.POST_QC:      ALL( OPT( ONE( Services.CLEAN_READSMETRICS, Services.TRIMMED_READSMETRICS ) ),
+                                     OPT( ONE( Services.CLEAN_FASTQC, Services.TRIMMED_FASTQC ) ),
+                                     OPT( Services.CLEAN_FASTQSCREEN ) ),
 
     # Services
 
-    Services.CONTIGSMETRICS:	OIF( Checkpoints.CONTIGS ),
-    Services.FASTQC:	        Params.READS,
-    Services.FASTQSCREEN:	    Params.READS,
-    Services.INTEROP:	        Params.ILLUM_RUN,
-    Services.KNEADDATA:         ALL( Params.META, Params.READS ),
-    Services.MULTIQC:	        ALL(), # No dependencies
-    Services.QUAST:	            OIF( Checkpoints.CONTIGS ),
-    Services.POST_FASTQC:	    OIF( Checkpoints.NEWREADS ),
-    Services.POST_FASTQSCREEN:	OIF( Checkpoints.NEWREADS ),
-    Services.POST_READSMETRICS:	OIF( Checkpoints.NEWREADS ),
-    Services.READSMETRICS:	    Params.READS,
-    Services.SKESA:	            ALL( ONE( Params.ILLUM_READS, Params.ILLUM_RUN ), Params.READS ),
-    Services.SPADES:	        ALL( Params.READS, Services.TRIMMOMATIC ),
-    Services.TRIMGALORE:	    Params.READS,
-    Services.TRIMMOMATIC:	    ALL( ONE( Params.ILLUM_READS, Params.ILLUM_RUN ), Params.READS ),
-    Services.UNICYCLER:	        Params.READS,
+    Services.CONTIGSMETRICS:	    OIF( Checkpoints.CONTIGS ),
+    Services.FASTQC:	            Params.READS,
+    Services.FASTQSCREEN:	        Params.READS,
+    Services.INTEROP:	            Params.ILLUM_RUN,
+    Services.KNEADDATA:             ALL( Params.META, Checkpoints.TRIMMED_READS ),
+    Services.MULTIQC:	            ALL(), # No dependencies
+    Services.QUAST:	                OIF( Checkpoints.CONTIGS ),
+    Services.TRIMMED_FASTQC:	    OIF( Checkpoints.TRIMMED_READS ),
+    Services.TRIMMED_READSMETRICS:	OIF( Checkpoints.TRIMMED_READS ),
+    Services.CLEAN_FASTQC:	        OIF( Checkpoints.CLEANED_READS ),
+    Services.CLEAN_FASTQSCREEN:	    OIF( Checkpoints.CLEANED_READS ),
+    Services.CLEAN_READSMETRICS:	OIF( Checkpoints.CLEANED_READS ),
+    Services.READSMETRICS:	        Params.READS,
+    Services.SKESA:	                ALL( ONE( Params.ILLUM_READS, Params.ILLUM_RUN ), Params.READS ),
+    Services.SPADES:	            ALL( Params.READS, Services.TRIMMOMATIC ),
+    Services.TRIMGALORE:	        Params.READS,
+    Services.TRIMMOMATIC:	        ALL( ONE( Params.ILLUM_READS, Params.ILLUM_RUN ), Params.READS ),
+    Services.UNICYCLER:	            Params.READS,
 
     # Checkpoints
 
     Checkpoints.CONTIGS:        ONE( Params.FASTA, Checkpoints.ASSEMBLED ),
     Checkpoints.ASSEMBLED:      ONE( Services.SKESA, Services.SPADES, Services.UNICYCLER ),
-    Checkpoints.NEWREADS:       ONE( Services.TRIMGALORE, Services.TRIMMOMATIC, Services.KNEADDATA )
+    Checkpoints.TRIMMED_READS:  ONE( Services.TRIMGALORE, Services.TRIMMOMATIC ),
+    Checkpoints.CLEANED_READS:  Services.KNEADDATA
 }
 
 # Consistency check on the DEPENDENCIES definitions

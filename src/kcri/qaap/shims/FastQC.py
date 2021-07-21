@@ -25,7 +25,8 @@ class FastQCShim:
          # Get the task parameters from the blackboard
         try:
             fastqs = task.get_input_fastqs().values() if Services(sid) == Services.FASTQC else \
-                     task.get_output_fastqs().values() if Services(sid) == Services.POST_FASTQC else \
+                     task.get_trimmed_fastqs().values() if Services(sid) == Services.TRIMMED_FASTQC else \
+                     task.get_cleaned_fastqs().values() if Services(sid) == Services.CLEAN_FASTQC else \
                      None
 
             if fastqs is None: raise Exception('unknown service in FastQCShim: %s' % sid)

@@ -11,7 +11,7 @@ from .data import QAAPBlackboard, Platform
 from .services import SERVICES
 from .workflow import DEPENDENCIES
 from .workflow import SystemTargets, UserTargets, Services, Params
-from .filescan import detect_filetype, scan_inputs, find_inputs, unzip_inputs
+from .filescan import detect_filetype, scan_inputs, find_inputs
 from . import __version__
 
 # Global variables and defaults
@@ -159,7 +159,7 @@ per line, in a text file and pass this file with @FILENAME.
         # @TODO@ add autodetect to tell apart MiSeq and NextSeq (relevant for TrimGalore)
         err_exit('please specify \'--platform MiSeq\' or \'--platform NextSeq\' (autodetect not yet implemented in QAAP)')
     elif platform in ( Platform.MISEQ, Platform.NEXTSEQ ) and se_fqs:
-        err_exit('QAAP can\'t handle unpaired %s reads, please specify \'-p/--platform ignore\' of omit the unpaired fastqs' % platform.value)
+        err_exit('QAAP can\'t handle unpaired %s reads, please specify \'-p/--platform ignore\' or omit the unpaired fastqs' % platform.value)
 
     # Now if we have any fastqs, then we have platform, and if platform is Illumina then just PE reads
 

@@ -22,68 +22,74 @@ MAX_TIM = 20 * 60
 class QuastShim:
     '''Service shim that executes the backend.'''
 
-    def execute(self, sid, xid, blackboard, scheduler):
+    def execute(self, sid, _xid, blackboard, scheduler):
         '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = QuastExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
+        task = QuastExecution(SERVICE, VERSION, sid, _xid, blackboard, scheduler)
 
          # Get the execution parameters from the blackboard
-        MAX_CPU = scheduler.max_cpu
+        MAX_CPU = min(scheduler.max_cpu,12)
+
+        # From here run the execution, and FAIL it on exception
         try:
+            fastas = task.get_all_fastas()
+            if not fastas: raise UserException('no FASTA files to process')
+
             # Set up Quast parameters (note there are many more)
             params = [
                 '--output-dir', '.',
                 '--threads', MAX_CPU,
                 '--no-sv',
                 '--circos',
-                '--gene-finding',
+#                '--gene-finding',
                 '--rna-finding',
-                '--conserved-genes-finding',
+#                '--conserved-genes-finding',
 #                '--silent',
             ]
 
             # Append the min-contig threshold for analysis
-            min_contig = execution.get_user_input('qu_t')
+            min_contig = task.get_user_input('qu_t')
             if min_contig:
                 params.extend(['--min-contig', min_contig])
 
             # Append the reference if we have it
-            ref = execution.get_reference_path('')
+            ref = task.get_reference_path('')
             if ref:
                 params.extend(['-r', os.path.abspath(ref)])
 
 #            # Append reads if we have them - only when one FASTA?
-#            pairs = execution.get_paired_fqs(dict())
+#            pairs = task.get_paired_fqs(dict())
 #            if pairs:
 #                params.extend(['--pe1', fastqs[0], '--pe2', fastqs[1]])
 #
 #                if len(fastqs) == 2:
-#                    if execution.is_seq_pairing(SeqPairing.PAIRED):
+#                    if task.is_seq_pairing(SeqPairing.PAIRED):
 #                elif len(fastqs) == 1:
-#                    elif execution.is_seq_pairing(SeqPairing.UNPAIRED):
+#                    elif task.is_seq_pairing(SeqPairing.UNPAIRED):
 #                        params.extend(['--single', fastqs[0]])
 #                    else:
 #                        raise Exception("read pairing must be known for Quast with a single FASTQ files")
 #                else:
 #                    raise Exception("Quast cannot make sense of more than 2 reads files")
 
-            params.append('--labels', fastas.keys())
-            params.append(fastas.values())
+            params.append('--labels')
+            params.extend(fastas.keys())
+            params.extend(fastas.values())
 
             job_spec = JobSpec('quast.py', params, MAX_CPU, MAX_MEM, MAX_SPC, MAX_TIM)
-            execution.store_job_spec(job_spec.as_dict())
-            execution.start(job_spec)
+            task.store_job_spec(job_spec.as_dict())
+            task.start(job_spec)
 
         # Failing inputs will throw UserException
         except UserException as e:
-            execution.fail(str(e))
+            task.fail(str(e))
 
         # Deeper errors additionally dump stack
         except Exception as e:
             logging.exception(e)
-            execution.fail(str(e))
+            task.fail(str(e))
 
-        return execution
+        return task
 
 
 translate = dict({

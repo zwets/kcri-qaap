@@ -141,6 +141,25 @@ class ServiceExecution(Task):
             raise UserException("required user input is missing: %s" % param)
         return ret
 
+    def get_input_fastas(self, default=None):
+        ret = self._blackboard.get_input_fastas(default)
+        if not ret and default is None:
+            raise UserException("no input FASTA files were provided")
+        return dict((k,os.path.abspath(v)) for k,v in ret.items()) if ret else default
+
+    def get_output_fastas(self, default=None):
+        ret = self._blackboard.get_assembled_fastas(default)
+        if not ret and default is None:
+            raise UserException("no FASTA assemblies were produced")
+        return dict((k,os.path.abspath(v)) for k,v in ret.items()) if ret else default
+
+    def get_all_fastas(self, default=None):
+        ret = self.get_input_fastas(dict())
+        ret.update(self.get_output_fastas(dict()))
+        if not ret and default is None:
+            raise UserException("no FASTA inputs were provided or assemblies were produced")
+        return dict((k,os.path.abspath(v)) for k,v in ret.items()) if ret else default
+
     def get_input_fastqs(self, default=None):
         '''Return dict with all individual fastqs.'''
         ret = dict()
@@ -175,7 +194,7 @@ class ServiceExecution(Task):
     def get_trimmed_fastqs(self, default=None):
         '''Analog of get_input_fastqs for trimmed fastqs, renames the identifiers.'''
         ret = dict()
-        for k,(r1,r2,u1,u2) in self._blackboard.get_trimmed_pe_fqs(dict()).items():
+        for k,(r1,r2,u1,u2) in self._blackboard.get_trimmed_pe_quads(dict()).items():
             ret['%s_trimmed_R1' % k] = os.path.abspath(r1)
             ret['%s_trimmed_R2' % k] = os.path.abspath(r2)
             if u1: ret['%s_trimmed_U1' % k] = os.path.abspath(u1)
@@ -189,7 +208,7 @@ class ServiceExecution(Task):
     def get_cleaned_fastqs(self, default=None):
         '''Analog of get_user_fastqs for cleaned fastqs, renames the identifiers.'''
         ret = dict()
-        for k,(r1,r2,u1,u2) in self._blackboard.get_cleaned_pe_fqs(dict()).items():
+        for k,(r1,r2,u1,u2) in self._blackboard.get_cleaned_pe_quads(dict()).items():
             ret['%s_cleaned_R1' % k] = os.path.abspath(r1)
             ret['%s_cleaned_R2' % k] = os.path.abspath(r2)
             if u1: ret['%s_cleaned_U1' % k] = os.path.abspath(u1)

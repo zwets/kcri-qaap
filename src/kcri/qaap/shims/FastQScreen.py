@@ -20,12 +20,13 @@ class FastQScreenShim:
     def execute(self, sid, xid, blackboard, scheduler):
         '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = FastQScreenExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
+        task = FastQScreenExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
 
-         # Get the execution parameters from the blackboard
+         # Get the task parameters from the blackboard
         try:
-            fastqs = execution.get_input_fastqs().values() if Services(sid) == Services.FASTQSCREEN else \
-                     execution.get_output_fastqs().values() if Services(sid) == Services.POST_FASTQSCREEN else \
+            fastqs = task.get_input_fastqs().values() if Services(sid) == Services.FASTQSCREEN else \
+                     task.get_trimmed_fastqs().values() if Services(sid) == Services.TRIMMED_FASTQSCREEN else \
+                     task.get_cleaned_fastqs().values() if Services(sid) == Services.CLEANED_FASTQSCREEN else \
                      None
 
             if fastqs is None: raise Exception('unknown ident in FastQScreenShim: %s' % sid.value)
@@ -33,8 +34,8 @@ class FastQScreenShim:
 
             # Compute resources
             n_fq = len(fastqs)
-            max_par = int(execution._scheduler.max_mem * 4)    # each thread needs 250MB
-            cpu = min(execution._scheduler.max_cpu, len(fastqs), max_par)
+            max_par = int(task._scheduler.max_mem * 4)    # each thread needs 250MB
+            cpu = min(task._scheduler.max_cpu, len(fastqs), max_par)
             mem = cpu / 4               # each job 250M
             spc = n_fq / 10             # each job at most 100M
             tim = n_fq / cpu * 5 * 60   # each job at most 5 min
@@ -50,19 +51,19 @@ class FastQScreenShim:
             params.extend(fastqs)
 
             job_spec = JobSpec('fastq_screen', params, cpu, mem, spc, tim)
-            execution.store_job_spec(job_spec.as_dict())
-            execution.start(job_spec)
+            task.store_job_spec(job_spec.as_dict())
+            task.start(job_spec)
 
         # Failing inputs will throw UserException
         except UserException as e:
-            execution.fail(str(e))
+            task.fail(str(e))
 
         # Deeper errors additionally dump stack
         except Exception as e:
             logging.exception(e)
-            execution.fail(str(e))
+            task.fail(str(e))
 
-        return execution
+        return task
 
 
 # Single execution of the service

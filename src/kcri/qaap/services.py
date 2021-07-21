@@ -27,22 +27,24 @@ from .shims.Unicycler import UnicyclerShim
 from .shims.base import UnimplementedService
 
 SERVICES = {
-    Services.CONTIGSMETRICS:    ContigsMetricsShim(),
-    Services.FASTQC:            FastQCShim(),
-    Services.FASTQSCREEN:       FastQScreenShim(),
-    Services.INTEROP:           InterOpShim(),
-    Services.KNEADDATA:         KneadDataShim(),
-    Services.MULTIQC:           MultiQCShim(),
-    Services.QUAST:             QuastShim(),
-    Services.POST_FASTQC:       FastQCShim(),       # Same as non-post, they
-    Services.POST_FASTQSCREEN:  FastQScreenShim(),  # can tell difference by
-    Services.POST_READSMETRICS: ReadsMetricsShim(), # the 'sid' parameter
-    Services.READSMETRICS:      ReadsMetricsShim(),
-    Services.SKESA:             SKESAShim(),
-    Services.SPADES:            SPAdesShim(),
-    Services.TRIMGALORE:        TrimGaloreShim(),
-    Services.TRIMMOMATIC:       TrimmomaticShim(),
-    Services.UNICYCLER:         UnicyclerShim()
+    Services.CONTIGSMETRICS:       ContigsMetricsShim(),
+    Services.FASTQC:               FastQCShim(),
+    Services.FASTQSCREEN:          FastQScreenShim(),
+    Services.INTEROP:              InterOpShim(),
+    Services.KNEADDATA:            KneadDataShim(),
+    Services.MULTIQC:              MultiQCShim(),
+    Services.QUAST:                QuastShim(),
+    Services.CLEAN_FASTQC:         FastQCShim(),       # Same shim as plain
+    Services.CLEAN_FASTQSCREEN:    FastQScreenShim(),  # 
+    Services.CLEAN_READSMETRICS:   ReadsMetricsShim(), # 
+    Services.TRIMMED_FASTQC:       FastQCShim(),       # Same shim as plain
+    Services.TRIMMED_READSMETRICS: ReadsMetricsShim(), # 
+    Services.READSMETRICS:         ReadsMetricsShim(),
+    Services.SKESA:                SKESAShim(),
+    Services.SPADES:               SPAdesShim(),
+    Services.TRIMGALORE:           TrimGaloreShim(),
+    Services.TRIMMOMATIC:          TrimmomaticShim(),
+    Services.UNICYCLER:            UnicyclerShim()
 }
 
 # Check that every enum that is defined has a mapping to a service
