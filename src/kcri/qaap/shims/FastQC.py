@@ -73,7 +73,7 @@ class FastQCExecution(ServiceExecution):
 
     def start(self, job_spec):
         if self.state == Task.State.STARTED:
-            self._job = self._scheduler.schedule_job('fastqc', job_spec, self.sid)
+            self._job = self._scheduler.schedule_job('fastqc-%s' % self.sid, job_spec, self.sid)
 
     def collect_output(self, job):
         '''Collect the job output and put on blackboard.

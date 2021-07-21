@@ -5,7 +5,7 @@
 #   This module defines ServiceExecution and UnimplementedService.
 #
 
-import os
+import os, logging
 from datetime import datetime
 from pico.workflow.executor import Task
 from pico.jobcontrol.job import Job
@@ -172,16 +172,39 @@ class ServiceExecution(Task):
             raise UserException("no single end fastq files were provided")
         return ret if ret else default
 
-    def get_output_fastqs(self, default=None):
-        '''Analog of get_user_fastqs for produced (trimmed or otherwise) fastqs.'''
+    def get_trimmed_fastqs(self, default=None):
+        '''Analog of get_input_fastqs for trimmed fastqs, renames the identifiers.'''
         ret = dict()
-        for k,(f1,f2) in self._blackboard.get_output_pe_fqs(dict()).items():
-            ret['%s_R1' % k] = f1
-            ret['%s_R2' % k] = f2
-        for k,fq in self._blackboard.get_output_se_fqs(dict()).items():
-            ret[k] = fq
+        for k,(r1,r2,u1,u2) in self._blackboard.get_trimmed_pe_fqs(dict()).items():
+            ret['%s_trimmed_R1' % k] = os.path.abspath(r1)
+            ret['%s_trimmed_R2' % k] = os.path.abspath(r2)
+            if u1: ret['%s_trimmed_U1' % k] = os.path.abspath(u1)
+            if u2: ret['%s_trimmed_U2' % k] = os.path.abspath(u2)
+        for k,fq in self._blackboard.get_trimmed_se_fqs(dict()).items():
+            ret['%s_trimmed' % k] = os.path.abspath(fq)
         if not ret and default is None:
-            raise UserException("no fastq files were produced")
+            raise UserException("no trimmed fastq files were produced")
+        return ret if ret else default
+
+    def get_cleaned_fastqs(self, default=None):
+        '''Analog of get_user_fastqs for cleaned fastqs, renames the identifiers.'''
+        ret = dict()
+        for k,(r1,r2,u1,u2) in self._blackboard.get_cleaned_pe_fqs(dict()).items():
+            ret['%s_cleaned_R1' % k] = os.path.abspath(r1)
+            ret['%s_cleaned_R2' % k] = os.path.abspath(r2)
+            if u1: ret['%s_cleaned_U1' % k] = os.path.abspath(u1)
+            if u2: ret['%s_cleaned_U2' % k] = os.path.abspath(u2)
+        for k,fq in self._blackboard.get_cleaned_se_fqs(dict()).items():
+            ret['%s_cleaned' % k] = os.path.abspath(fq)
+        if not ret and default is None:
+            raise UserException("no cleaned fastq files were produced")
+        return ret if ret else default
+
+    def get_output_fastqs(self, default=None):
+        '''Analog of get_input_fastqs, returns either the cleaned or trimmed fastqs.'''
+        ret = self.get_cleaned_fastqs(self.get_trimmed_fastqs(dict()))
+        if not ret and default is None:
+            raise UserException("no output fastq files were produced")
         return ret if ret else default
 
     def get_reference_path(self, default=None):
@@ -258,6 +281,7 @@ class MultiJobExecution(ServiceExecution):
                 try:
                     self.collect_job(results, job, userdata)
                 except Exception as e:
+                    logging.exception(e)
                     self.fail("failed to collect output for job '%s': %s", job.name, str(e))
 
             # Add execution error for each failed job

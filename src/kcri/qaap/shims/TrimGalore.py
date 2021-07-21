@@ -3,7 +3,7 @@
 # kcri.qaap.shims.TrimGalore - service shim to the TrimGalore backend
 #
 
-import os, logging, functools, operator
+import os, logging, functools, operator, re
 from pico.workflow.executor import Task
 from pico.jobcontrol.job import JobSpec, Job
 from .base import MultiJobExecution, UserException
@@ -41,6 +41,7 @@ class TrimGaloreShim:
             execution.fail(str(e))
 
         return execution
+
 
 # Single execution of the service
 class TrimGaloreExecution(MultiJobExecution):
@@ -104,49 +105,76 @@ class TrimGaloreExecution(MultiJobExecution):
         self.add_job_spec('se/%s' % fid, job_spec.as_dict())
         self.add_job('trim_galore-se_%s' % fid, job_spec, '%s/se/%s' % (self.sid,fid), (False,fid))
 
-    @staticmethod
-    def report_filter(l):
-        trap = dict({
-            "Total reads processed:": 'total_reads',
-            "Reads with adapters:": 'adapter_reads',
-            "Reads written (passing filters):": 'passing_reads',
-            "Total basepairs processed:": 'total_bp',
-            "Quality-trimmed:": 'trimmed_bp',
-            "Total written (filtered):": 'passing_bp',
-            "Number of sequence pairs removed ": 'removed_pairs',
-            "Sequences removed because ": 'removed_seqs'})
-
-        for k in trap:
-            if l.startswith(k):
-                return trap[k], l.split(':')[1].strip()
-        if l.startswith('Using '):
-            return 'adapter', l.split(' ')[1]
-        return None
-    
     def collect_job(self, results, job, udata):
         '''Collect the job output and put on blackboard.
            This method is called by super().report() once job is done.'''
 
         is_pe, fid = udata
 
-        result = dict()
+        res = dict()
+        res['summary'] = self.collect_summary(job, is_pe, fid)
 
         if is_pe:
-            with open(job.stderr, 'r') as f:
-                d = dict()
-                for k, v in filter(None, map(self.report_filter, f)):
-                    d[k] = (d[k], v) if k in d else v
-                result['summary'] = d
-            result['paired'] = (job.file_path(fid + '_R1_val_1.fq'), job.file_path(fid + '_R2_val_2.fq'))
-            result['unpaired'] = list(filter(lambda f: os.stat(f).st_size != 0, [job.file_path(fid + '_R1_unpaired_1.fq'), job.file_path(fid + '_R2_unpaired_2.fq')]))
+            check_file = lambda f: None if not os.path.exists(f) or os.stat(f).st_size == 0 else f
+            fastqs = (
+                    job.file_path(fid + '_R1_val_1.fq'),
+                    job.file_path(fid + '_R2_val_2.fq'),
+                    check_file(job.file_path(fid + '_R1_unpaired_1.fq')),
+                    check_file(job.file_path(fid + '_R2_unpaired_2.fq')) )
+            res['fastqs'] = fastqs
+            self._blackboard.add_trimmed_pe_fqs(fid, fastqs)
+
             bag = results.get('pe', dict())
-            bag[fid] = result
+            bag[fid] = res
             results['pe'] = bag
         else:
-            with open(job.stderr, 'r') as f:
-                result['summary'] = dict(filter(None, map(self.report_filter, f)))
-            result['fastq'] = job.file_path(fid + '_trimmed.fq')
-            bag = results.get('se', dict())
-            bag[fid] = result
-            results['se'] = bag
+            fq = job.file_path(fid + '_trimmed.fq')
+            res['fastq'] = fq
+            self._blackboard.add_trimmed_se_fq(fid, fq)
+
+        bag = results.get('pe' if is_pe else 'se', dict())  # cater for when there is one already
+        bag[fid] = res
+        results['pe' if is_pe else 'se'] = bag
+
+    # Output parsing magic below ...
+
+    to_int = lambda x: int(x.replace(',',''))
+    to_str = lambda x: str(x)
+
+    PATTERNS = dict({
+        'total_reads':   (re.compile('^Total reads processed: +([0-9,]+)$'), to_int),
+        'adapter_reads': (re.compile('^Reads with adapters: +([0-9,]+) .*$'), to_int),
+        'passing_reads': (re.compile('^Reads written \\(passing filters\\): +([0-9,]+) .*$'), to_int),
+        'total_bp':      (re.compile('^Total basepairs processed: +([0-9,]+) bp$'), to_int),
+        'trimmed_bp':    (re.compile('^Quality-trimmed: +([0-9,]+) bp .*$'), to_int),
+        'passing_bp':    (re.compile('^Total written \\(filtered\\): +([0-9,]+) bp .*$'), to_int),
+        'adapter':       (re.compile('^Using (.+) adapter for trimming \(count: [0-9,]+\)\. .*$'), to_str),
+        'adapter_seq':   (re.compile('^Adapter sequence: \'([ACTG]+)\'.*$'), to_str),
+        # Beware, suddenly the space between : and value is a tab so allow any space 
+        'removed_seqs':  (re.compile('^Sequences removed because they became shorter than the length cutoff of [0-9]+ bp:\\s+([0-9,]+) .*$'), to_int),
+        'removed_pairs': (re.compile('^Number of sequence pairs removed because at least one read was shorter than the length cutoff \\([0-9]+ bp\\):\\s+([0-9,]+) .*$'), to_int)
+        })
+
+    @staticmethod
+    def report_filter(l): # note l has the '\n' still on, silly Python
+        for k,m,f in [ (k, p.fullmatch(l[:-1]), f) for k,(p,f) in TrimGaloreExecution.PATTERNS.items() ]:
+            if m:
+                try: return k, f(m.group(1))
+                except: return k, '?'
+        return None
+
+    def extract_summary(self, fn):
+        with open(fn, 'r') as f:
+            return dict(filter(None, map(self.report_filter, f)))
+
+    def collect_summary(self, job, is_pe, fid):
+        d = dict()
+        if is_pe:
+            d['%s_R1' % fid] = self.extract_summary(job.file_path(os.path.basename(job.spec.args[-2]) + '_trimming_report.txt'))
+            d['%s_R2' % fid] = self.extract_summary(job.file_path(os.path.basename(job.spec.args[-1]) + '_trimming_report.txt'))
+            # Move the removed_pairs which TrimGalore writes to R2 a level up
+            d['removed_pairs'] = d['%s_R2' % fid].pop('removed_pairs','?')
+        else:
+            d[fid] = self.extract_summary(job.file_path(os.path.basename(job.spec.args[-1]) + '_trimming_report.txt'))
+        return d
 

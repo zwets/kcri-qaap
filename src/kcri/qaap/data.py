@@ -131,11 +131,12 @@ class QAAPBlackboard(Blackboard):
         return self.get_user_input('illumina_run_dir', default)
 
     def put_input_il_fqs(self, dic):
-        '''Stores the illumina read pairs under their sample id.'''
-        self.put_user_input('illumina_fqs', dic)
+        '''Stores the illumina read pairs under their sample id, and setup
+           symlinks.'''
+        self.put_user_input('il_fqs', dic)
 
     def get_input_il_fqs(self, default=None):
-        return self.get_user_input('illumina_fqs', default)
+        return self.get_user_input('il_fqs', default)
 
     def put_input_pe_fqs(self, dic):
         self.put_user_input('pe_fqs', dic)
@@ -159,27 +160,35 @@ class QAAPBlackboard(Blackboard):
 
     # QAAP outputs
 
-    def put_output_paired_fq(self, xid, pair):
-        '''Sets the produced fastq pair's file paths for xid.'''
-        self.put_qaap_output('paired_fqs/%s' % xid, pair)
+    def add_trimmed_pe_fqs(self, fid, quad):
+        '''Stores the trimmed fastq quad (R1, R2, U1, U2), where U1 or U2 may be None'''
+        self.put_qaap_output('trimmed_pe_fqs/%s' % fid, quad)
 
-    def get_output_paired_fqs(self, xid, default=None):
-        '''Returns the output paired fastq tuple for xid.'''
-        return self.get_qaap_output('paired_fqs/%s' % xid, default)
+    def get_trimmed_pe_fqs(self, default=None):
+        '''Return the dict with all trimmed pe quads.'''
+        return self.get_qaap_output('trimmed_pe_fqs', default)
 
-    def add_output_single_fq(self, xid, path):
-        '''Adds a produced unpaired fastq file path to xid's list.'''
-        self.put_qaap_output('single_fqs/%s' % xid, path)
+    def add_trimmed_se_fq(self, fid, fq):
+        '''Stores the trimmed se fq for fid.'''
+        self.put_qaap_output('trimmed_se_fqs/%s' % fid, fq)
 
-    def get_output_single_fqs(self, xid, default=None):
-        '''Returns list of single fastqs produced in xid.'''
-        return self.get_qaap_output('single_fqs/%s' % xid, default)
+    def get_trimmed_se_fqs(self, default=None):
+        '''Return the dict with all trimmed se fastqs.'''
+        return self.get_qaap_output('trimmed_se_fqs', default)
 
-    def put_output_fasta(self, xid, path):
-        '''Sets the produced FASTA file for xid.'''
-        self.put_qaap_output('contigs/%s' % xid, path)
+    def add_cleaned_pe_fqs(self, fid, quad):
+        '''Stores the cleaned fastq quad location (R1, R2, U1, U2), where U1 or U2 may be None.'''
+        self.put_qaap_output('cleaned_pe_fqs/%s' % fid, quad)
 
-    def get_output_fasta(self, xid, default=None):
-        '''Return path of the FASTA produced by xid.'''
-        return self.get_qaap_output('contigs/%s' % xid, default)
+    def get_cleaned_pe_fqs(self, default=None):
+        '''Return the dict with all cleaned pe quad.'''
+        return self.get_qaap_output('cleaned_pe_fqs', default)
+
+    def add_cleaned_se_fqs(self, fid, fq):
+        '''Stores the cleaned SE fastq location.'''
+        self.put_qaap_output('cleaned_se_fqs/%s' % fid, fq)
+
+    def get_cleaned_se_fqs(self, default=None):
+        '''Return the dict with all cleaned SE fastqs.'''
+        return self.get_qaap_output('cleaned_se_fqs', default)
 
