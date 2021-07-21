@@ -21,6 +21,11 @@ class Platform(enum.Enum):
 #   Wraps the generic Blackboard with an API that adds getters and putters for
 #   data shared between QAAP services, so they don't grab around in random bags
 #   of untyped data.
+#
+#   Note that kcri.shim.base.ServiceExecution adds more logic to this, accessible
+#   from executions.  The demarcation line is not entirely clear; in principle
+#   QAAPBlackboard should offer all low level accessors for user inputs as these
+#   are put there independent of any execution.
 
 class QAAPBlackboard(Blackboard):
     '''Adds to the generic Blackboard getters and putters specific to the shared
@@ -62,10 +67,33 @@ class QAAPBlackboard(Blackboard):
         return self.get('qaap/outputs/%s' % param, default)
 
     def add_warning(self, warning):
-        '''Stores a warning on the 'qaap' top level (note: use service warning instead).'''
+        '''Stores a warning on the 'qaap' top level (note: use service.warning instead).'''
         self.append_to('qaap/warnings', warning)
 
     # Standard methods for QAAP common data
+
+    def put_base_path(self, path):
+        '''The absolute base/work/out dir, this is what we run in initially.'''
+        self.put_user_input('out_dir', os.path.abspath(path))
+
+    def get_base_path(self):
+        '''Return the absolute base/work/out dir, the initial path where we run.'''
+        path = self.get_user_input('out_dir')
+        if not path:
+            raise Exception('base path (out_dir) is not set')
+        return path
+
+    def get_inputs_dir(self):
+        '''Return the directory with the symlinks to the inputs.'''
+        path = os.path.join(self.get_base_path(), 'inputs')
+        os.makedirs(path, exist_ok = True)
+        return path
+
+    def get_outputs_dir(self):
+        '''Return the directory where the symlinks to the outputs go.'''
+        path = os.path.join(self.get_base_path(), 'outputs')
+        os.makedirs(path, exist_ok = True)
+        return path
 
     def put_db_root(self, path):
         '''Stores the QAAP services database root.'''
@@ -121,72 +149,144 @@ class QAAPBlackboard(Blackboard):
             raise Exception("trimmomatic adapter file not found: %s" % fn)
         return fn
 
+    # Helpers for creating the inputs and outputs symlinks
+
+    # It would be more convenient to just work with absolute paths everywhere,
+    # but this both looks ugly and will not match inside and outside the
+    # container.  So the only abspaths we have are where the symlinks in the
+    # inputs directory point to input files on the host file system, and
+    # we jump through some hoops here to make all other file references
+    # relative.  We store them relative to base dir and make them relative
+    # to wherever the job that needs inputs runs.
+
+    def make_symlink(self, dst_dir, fn, sn):
+        '''Create symlink in dst_dir to fn from sn, appending .gz if fn has .gz,
+           return the link path relative to the base directory.'''
+        link_fn = os.path.join(dst_dir, sn)
+        if fn.endswith('.gz'): link_fn += '.gz'
+        if os.path.exists(link_fn): os.unlink(link_fn)
+        if not os.path.exists(dst_dir): os.makedirs(dst_dir)
+        os.symlink(os.path.relpath(fn, dst_dir), link_fn)
+        return os.path.relpath(link_fn, self.get_base_path())
+
+    def symlink_input_pairs(self, dic):
+        '''For each key in dic, make symlinks key_R1.fq and key_R2.fq in dst_dir pointing to fq1 and fq2,
+           return new dict having the mapping to the symlinks.'''
+        inp_dir = self.get_inputs_dir()
+        return dict((k,(self.make_symlink(inp_dir, f1, k+'_R1.fq'),
+                        self.make_symlink(inp_dir, f2, k+'_R2.fq'))) for k,(f1,f2) in dic.items())
+
+    def symlink_input_files(self, dic, ext):
+        '''For each key in dic, make symlink key.ext[.gz] in dst_dir pointing to fn.
+           Return dict like dic but with the filenames swapped for the symlinks.'''
+        inp_dir = self.get_inputs_dir()
+        return dict((k,self.make_symlink(inp_dir, fn, k+ext)) for k,fn in dic.items())
+
+    def symlink_output_quad(self, sub_dir, fid, lst):
+        '''For R1,R2,U1,U2 create symlinks in sub_dir under outputs_dir.
+           Return quad with the filenames replaced by the symlinks.'''
+        out_dir = os.path.join(self.get_outputs_dir(), sub_dir)
+        return (
+            self.make_symlink(out_dir, lst[0], fid+'_R1.fq'),
+            self.make_symlink(out_dir, lst[1], fid+'_R2.fq'),
+            self.make_symlink(out_dir, lst[2], fid+'_U1.fq') if lst[2] else lst[2],
+            self.make_symlink(out_dir, lst[3], fid+'_U2.fq') if lst[3] else lst[3] )
+
+    def symlink_output_file(self, sub_dir, fid, fn, ext):
+        '''Create symlink fid.ext[.gz] in sub_dir under outputs.
+           Return the symlink (relative to base path).'''
+        out_dir = os.path.join(self.get_outputs_dir(), sub_dir)
+        return self.make_symlink(out_dir, os.path.abspath(fn), fid+ext)
+
+    # Helpers to make links relative to base_dir relative to pwd
+
+    @staticmethod
+    def _rel_rec(o,base): # recursive method
+        if not o: return o
+        if type(o) is str: return os.path.abspath(os.path.join(base,o))
+        if type(o) is list: return list(map(lambda i: QAAPBlackboard._rel_rec(i, base), o))
+        if type(o) is tuple: return tuple(map(lambda i: QAAPBlackboard._rel_rec(i, base), o))
+        if type(o) is dict: return dict((k, QAAPBlackboard._rel_rec(v,base)) for k,v in o.items())
+        raise Exception('missed case in _rel_rec: o is %s' % str(type(o)))
+
+    def relativise(self, obj):
+        return self._rel_rec(obj, self.get_base_path())
+
     # Inputs: single_fqs, paired_fqs, fastas, illumina_run_dir
 
     def put_illumina_run_dir(self, d):
-        '''Stores the path to the MiSeq run output if processing a whole run.'''
+        '''Stores the path to the MiSeq run output when processing a whole run.'''
         self.put_user_input('illumina_run_dir', d)
 
     def get_illumina_run_dir(self, default=None):
         return self.get_user_input('illumina_run_dir', default)
 
     def put_input_il_fqs(self, dic):
-        '''Stores the illumina read pairs under their sample id, and setup
-           symlinks.'''
-        self.put_user_input('il_fqs', dic)
+        '''Store the illumina read pairs under their sample ids, and replace
+           paths in dic by the symlinks in inputs pointing at them.'''
+        self.put_user_input('il_fqs', self.symlink_input_pairs(dic))
 
     def get_input_il_fqs(self, default=None):
-        return self.get_user_input('il_fqs', default)
+        '''Return the dict of input pairs, relativising their paths to the pwd.'''
+        return self.relativise(self.get_user_input('il_fqs', default))
 
     def put_input_pe_fqs(self, dic):
-        self.put_user_input('pe_fqs', dic)
+        '''Store the read pairs under their sample ids, and replace paths in
+           dic by symlinks in the inputs dir pointing to the real files.'''
+        self.put_user_input('pe_fqs', self.symlink_input_pairs(dic))
 
     def get_input_pe_fqs(self, default=None):
-        return self.get_user_input('pe_fqs', default)
+        return self.relativise(self.get_user_input('pe_fqs', default))
 
     def put_input_se_fqs(self, dic):
-        '''Stores the single fastqs dict as its own (pseudo) user input.'''
-        self.put_user_input('se_fqs', dic)
+        '''Store the single reads under their sample ids, and replace paths in
+           dic by symlinks in the inputs dir pointing to the real files.'''
+        self.put_user_input('se_fqs', self.symlink_input_files(dic, '.fq'))
 
     def get_input_se_fqs(self, default=None):
-        return self.get_user_input('se_fqs', default)
+        return self.relativise(self.get_user_input('se_fqs', default))
 
     def put_input_fastas(self, dic):
-        '''Stores the fastas dict as its own (pseudo) user input.'''
-        self.put_user_input('fastas', dic)
+        '''Store the fasta files under their sample ids, and replace paths in
+           dic by symlinks in the inputs dir pointing to the real files.'''
+        self.put_user_input('fastas', self.symlink_input_files(dic, '.fa'))
 
     def get_input_fastas(self, default=None):
-        return self.get_user_input('fastas', default)
+        return self.relativise(self.get_user_input('fastas', default))
 
-    # QAAP outputs
+    # QAAP outputs - Trimmed
 
-    def add_trimmed_pe_fqs(self, fid, quad):
-        '''Stores the trimmed fastq quad (R1, R2, U1, U2), where U1 or U2 may be None'''
-        self.put_qaap_output('trimmed_pe_fqs/%s' % fid, quad)
+    def add_trimmed_pe_quad(self, fid, quad):
+        '''Store the trimmed fastq quad (R1, R2, U1, U2), and make relative
+           symlinks in the outputs dir pointing at the files.'''
+        self.put_qaap_output('trimmed_pe_fqs/%s' % fid, self.symlink_output_quad('trimmed', fid, quad))
 
-    def get_trimmed_pe_fqs(self, default=None):
+    def get_trimmed_pe_quads(self, default=None):
         '''Return the dict with all trimmed pe quads.'''
         return self.get_qaap_output('trimmed_pe_fqs', default)
 
     def add_trimmed_se_fq(self, fid, fq):
-        '''Stores the trimmed se fq for fid.'''
-        self.put_qaap_output('trimmed_se_fqs/%s' % fid, fq)
+        '''Stores the trimmed se fq for fid and creates symlink under outputs.'''
+        self.put_qaap_output('trimmed_se_fqs/%s' % fid, self.symlink_output_file('trimmed', fid, fq, '.fq'))
 
     def get_trimmed_se_fqs(self, default=None):
         '''Return the dict with all trimmed se fastqs.'''
         return self.get_qaap_output('trimmed_se_fqs', default)
 
-    def add_cleaned_pe_fqs(self, fid, quad):
-        '''Stores the cleaned fastq quad location (R1, R2, U1, U2), where U1 or U2 may be None.'''
-        self.put_qaap_output('cleaned_pe_fqs/%s' % fid, quad)
+    # QAAP outputs - Cleaned
 
-    def get_cleaned_pe_fqs(self, default=None):
+    def add_cleaned_pe_quad(self, fid, quad):
+        '''Store the cleaned fastq PE quad (R1, R2, U1, U2), and make relative
+           symlinks in the outputs dir pointing at the files.'''
+        self.put_qaap_output('cleaned_pe_fqs/%s' % fid, self.symlink_output_quad('cleaned', fid, quad))
+
+    def get_cleaned_pe_quads(self, default=None):
         '''Return the dict with all cleaned pe quad.'''
         return self.get_qaap_output('cleaned_pe_fqs', default)
 
     def add_cleaned_se_fqs(self, fid, fq):
-        '''Stores the cleaned SE fastq location.'''
-        self.put_qaap_output('cleaned_se_fqs/%s' % fid, fq)
+        '''Stores the cleaned SE fq for fid and creates symlink under outputs.'''
+        self.put_qaap_output('cleaned_se_fqs/%s' % fid, self.symlink_output_file('cleaned', fid, fq, '.fq'))
 
     def get_cleaned_se_fqs(self, default=None):
         '''Return the dict with all cleaned SE fastqs.'''

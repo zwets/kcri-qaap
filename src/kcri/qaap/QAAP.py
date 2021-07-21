@@ -11,7 +11,7 @@ from .data import QAAPBlackboard, Platform
 from .services import SERVICES
 from .workflow import DEPENDENCIES
 from .workflow import SystemTargets, UserTargets, Services, Params
-from .filescan import detect_filetype, scan_inputs, find_inputs, symlink_input_pairs, symlink_input_files
+from .filescan import detect_filetype, scan_inputs, find_inputs, unzip_inputs
 from . import __version__
 
 # Global variables and defaults
@@ -84,6 +84,7 @@ per line, in a text file and pass this file with @FILENAME.
     group.add_argument('-s', '--list-services', action='store_true', help="list the available services")
     group.add_argument('-r', '--reference',     metavar='FASTA', help="path to a reference genome to use in QC")
     group.add_argument('-d', '--db-root',       metavar='PATH', default='/databases', help="base path to databases (leave default when dockerised)")
+#    group.add_argument('-z', '--unzip',         action='store_true', help="unzip all gzipped files prior to running the pipeline (faster at the cost of disk space)")
     group.add_argument('-v', '--verbose',       action='store_true', help="write verbose output to stderr")
     group.add_argument('inputs', metavar='DIR_OR_FILES', nargs='*', default=[], help="input directory or list of fastq files")
 
@@ -195,25 +196,16 @@ per line, in a text file and pass this file with @FILENAME.
         err_exit('no such directory for --db-root: %s', args.db_root)
     db_root = os.path.abspath(args.db_root)
 
-    # Create the output directory, with inside the inputs directory
+    # Create the output directory
     try:
-        inputs_dir = os.path.join(args.out_dir,'inputs')
-        os.makedirs(inputs_dir, exist_ok=True)
+        os.makedirs(args.out_dir, exist_ok=True)
     except Exception as e:
-        err_exit('error creating directory %s: %s', inputs_dir, str(e))
-
-    # Put symlinks to the inputs in the out-dir-relative inputs directory
-    il_fqs = symlink_input_pairs(inputs_dir, il_fqs)
-    pe_fqs = symlink_input_pairs(inputs_dir, pe_fqs)
-    se_fqs = symlink_input_files(inputs_dir, se_fqs, '.fq')
-    fastas = symlink_input_files(inputs_dir, fastas, '.fa')
-
-    # Now that path handling has been done we can safely change our PWD
-    os.chdir(args.out_dir)
+        err_exit('error creating directory %s: %s', arg.out_dir, str(e))
 
     # Set up the Workflow execution
     blackboard = QAAPBlackboard(args.verbose)
     blackboard.start_run(SERVICE, VERSION, vars(args))
+    blackboard.put_base_path(os.path.abspath(args.out_dir))
     blackboard.put_illumina_run_dir(illumina_run_dir)
     blackboard.put_db_root(db_root)
 
@@ -234,6 +226,9 @@ per line, in a text file and pass this file with @FILENAME.
     if fastas:
         params.append(Params.FASTAS)
         blackboard.put_input_fastas(fastas)
+
+    # Now that path handling has been done we can safely change our PWD
+    os.chdir(args.out_dir)
 
     # Set up the workflow executor and the batches
     scheduler = SubprocessScheduler(args.max_cpus, args.max_mem, args.max_disc, args.max_time, args.poll, not args.verbose)

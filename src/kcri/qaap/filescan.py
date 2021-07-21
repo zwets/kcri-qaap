@@ -146,7 +146,7 @@ def scan_fastas(fns):
     '''Return dict of fasta files among list of file name fns, keyed by sample name.'''
     fastas = dict()
     for it in filter(is_fasta_file, fns):
-        add_to_dict(fastas, make_sample_name(it), it)
+        add_to_dict(fastas, make_sample_name(it), os.path.abspath(it))
     return fastas
 
 # Same as scan_fastqs, with fastas appended to the tuple.
@@ -162,23 +162,4 @@ def scan_inputs(fns, strict=False):
 # Runs scan_inputs over the files in directory dname, see scan_inputs for retval
 def find_inputs(dname):
     return scan_inputs(map(lambda de: de.path, filter(lambda de: de.is_file, os.scandir(dname))))
-
-def make_symlink(dst_dir, fn, sn):
-    '''Create symlink to fn from sn, appending .gz if fn has .gz, return the link name.'''
-    link_fn = os.path.join(dst_dir, sn)
-    if fn.endswith('.gz'): link_fn += '.gz'
-    if os.path.exists(link_fn): os.unlink(link_fn)
-    os.symlink(os.path.abspath(fn), link_fn)
-    return os.path.abspath(link_fn)
-
-def symlink_input_pairs(dst_dir, dic):
-    '''For each key in dic, make symlinks key_R1.fq and key_R2.fq in dst_dir pointing to fq1 and fq2,
-       return new dict having the mapping to the symlinks.'''
-    return dict((k,(make_symlink(dst_dir, f1, k+'_R1.fq'),
-                    make_symlink(dst_dir, f2, k+'_R2.fq'))) for k,(f1,f2) in dic.items())
-
-def symlink_input_files(dst_dir, dic, ext):
-    '''For each key in dic, make symlink key.ext in dst_dir pointing to fn.
-       Return dict like dic but mapping the keys to the (absolute) symlinks.'''
-    return dict((k,make_symlink(dst_dir, fn, k+ext)) for k,fn in dic.items())
 

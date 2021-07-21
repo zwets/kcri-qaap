@@ -122,7 +122,7 @@ class TrimGaloreExecution(MultiJobExecution):
                     check_file(job.file_path(fid + '_R1_unpaired_1.fq')),
                     check_file(job.file_path(fid + '_R2_unpaired_2.fq')) )
             res['fastqs'] = fastqs
-            self._blackboard.add_trimmed_pe_fqs(fid, fastqs)
+            self._blackboard.add_trimmed_pe_quad(fid, fastqs)
 
             bag = results.get('pe', dict())
             bag[fid] = res
