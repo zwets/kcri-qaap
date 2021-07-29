@@ -10,6 +10,6 @@ export QAAP_DB_DIR="$BASE_DIR/databases"
 . "$BASE_DIR/functions.sh"
 
 make_output_dir
-run_qaap -v --platform MiSeq -o "$OUTPUT_DIR" "$BASE_DIR/data/test_1.fq.gz" "$BASE_DIR/data/test_2.fq.gz"
+run_qaap -v -t polish --platform MiSeq -o "$OUTPUT_DIR" "$BASE_DIR/data/test_1.fq.gz" "$BASE_DIR/data/test_2.fq.gz"
 check_output
 

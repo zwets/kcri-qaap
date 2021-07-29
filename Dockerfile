@@ -20,8 +20,10 @@ FROM continuumio/miniconda3:4.9.2
 # - g++ and the libboost packages for SKESA
 # - default-jre for FastQC and Trimmomatic (and the mkdir for it)
 # - bowtie2, samtools, gd-graph for FastQ-Screen
+# - bowtie2, samtools, default-jre for pilon, for Unicycler
 # - trf for KneadData
 # - pigz for trim-galore
+# - cmake for alga
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get -qq update --fix-missing && \
