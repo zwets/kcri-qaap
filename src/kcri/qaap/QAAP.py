@@ -11,7 +11,7 @@ from .data import QAAPBlackboard, Platform
 from .services import SERVICES
 from .workflow import DEPENDENCIES
 from .workflow import SystemTargets, UserTargets, Services, Params
-from .filescan import detect_filetype, scan_inputs, find_inputs
+from .filescan import detect_filetype, scan_inputs, find_inputs, is_illumina_output_dir
 from . import __version__
 
 # Global variables and defaults
@@ -106,6 +106,10 @@ per line, in a text file and pass this file with @FILENAME.
     group = parser.add_argument_group('Quast parameters')
     group.add_argument('--qu-t', type=int, metavar='LEN', default=500, help="threshold contig length for Quast (500)")
 
+    group = parser.add_argument_group('Unicycler parameters')
+    group.add_argument('--un-m', metavar='MODE', default='normal', help="unicycler mode (conservative, normal, bold)")
+    group.add_argument('--un-p', metavar='SIZE', default=10000, help="polish contigs of SIZE and longer (default 10000)")
+
     # Perform the parsing
     args = parser.parse_args()
 
@@ -138,11 +142,12 @@ per line, in a text file and pass this file with @FILENAME.
     fastas = dict()     # fasta files
     if len(args.inputs) == 1 and os.path.isdir(args.inputs[0]):
         inp_dir = args.inputs[0]
-        if is_illumina_run_dir(inp_dir):
-            illumina_run_dir = os.path.abspath(inp_dir)
+        if os.path.isdir(os.path.join(inp_dir, 'Data','Intensities','BaseCalls')):
             inp_dir = os.path.join(inp_dir, 'Data','Intensities','BaseCalls')
+            if is_illumina_output_dir(inp_dir):
+                illumina_run_dir = os.path.abspath(inp_dir)
             il_fqs, pe_fqs, se_fqs, _ = find_inputs(inp_dir)
-            if se_fqs: err_exigt('cannot handle unpaired reads in Illumina run dir: %s' % inp_dir)
+            if se_fqs: err_exit('cannot handle unpaired reads in Illumina run dir: %s' % inp_dir)
             elif pe_fqs: err_exit('QAAP autodetect broken: reads not identified as Illumina in: %s' % inp_dir)
             elif not il_fqs: err_exit('no reads found in Illumina run dir: %s' % inp_dir)
         else:

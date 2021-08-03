@@ -31,7 +31,7 @@ class UnicyclerShim:
         # Get the task parameters from the blackboard
         try:
             il_fqs = blackboard.get_input_il_fqs()
-            if not il_fqs: raise UserException("no Illumina reads to process, skipping SKESA")
+            if not il_fqs: raise UserException("no Illumina reads to process, skipping Unicycler")
 
             # Assume single job requires 15G memory
             job_mem = 15
@@ -63,15 +63,20 @@ class UnicyclerExecution(MultiJobExecution):
        Schedules a job for every illumina paired end read in the xid.'''
 
     def start(self, pairs, req_cpu, req_mem):
+
+        mode = self._blackboard.get_user_input('un_m')
+        polish = self._blackboard.get_user_input('un_p')
+
         if self.state == Task.State.STARTED:
             for fid,(r1,r2) in pairs.items():
 
                 params = [
-                    # Override the default (latest) SPAdes path
+                    # Need to override SPAdes path, Unicycler requires old version
                     '--spades_path', '/usr/src/ext/spades-uni/bin/spades.py',
                     #'--spades_tmp_dir', '/tmp', # default is tmp dir in out dir
-                    '--min_polish_size', 1000, # default is 10000
                     '--threads', req_cpu,
+                    '--min_polish_size', polish,
+                    '--mode', mode,
                     '-1', r1,
                     '-2', r2,
                     #'-s', unpaired
@@ -90,13 +95,58 @@ class UnicyclerExecution(MultiJobExecution):
 
         gfa = job.file_path('assembly.gfa')
         fna = job.file_path('assembly.fasta')
+        log = job.file_path('unicycler.log')
 
         if os.path.isfile(gfa):
             res['graph'] = gfa
 
         if os.path.isfile(fna):
-            res['assembly'] = fna
+            res['fasta'] = fna
             self._blackboard.add_assembled_fasta(fid, fna)
         else:
             self.fail("backend job produced no assembly, check: %s", job.file_path(""))
+
+        # Parse assembly information from unicycler's log if found
+
+        if not os.path.isfile(log):
+            return
+ 
+        with open(log) as f:
+
+            # Skip to the 'Bridged assembly' section
+            l = ''
+            while f and not l.startswith('Bridged assembly'): l = next(f)
+            for _ in range(0,7): l = next(f) if f else ''
+
+            #Component   Segments   Links   Length   N50     Longest segment   Status
+            #    total          8       1   19,701   2,569             6,706
+            #        1          1       0    6,706   6,706             6,706   incomplete
+            #        2          1       1    3,133   3,133             3,133     complete
+
+            # Parse the "total" line into a dict
+            s = l.replace(',','').split()
+            if not s: return
+
+            res['stats'] = dict({'total': {
+                'length': s[3],
+                'segments': s[1],
+                'links': s[2],
+                'n1': s[5],
+                'n50': s[4]}})
+
+            cs = list()
+            res['stats']['components'] = cs
+
+            # Parse the components lines into a list of dict
+            s = next(f).replace(',','').split()
+            while s:
+                cs.append(dict({
+                    'comp': s[0],
+                    'length': s[3],
+                    'segs': s[1],
+                    'links': s[2],
+                    'n1': s[5],
+                    'n50': s[4],
+                    'complete': s[6] == "complete" if len(s) > 4 else 'unknown'}))
+                s = next(f).replace(',','').split() if f else list()
 

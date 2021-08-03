@@ -4,6 +4,7 @@
 # Used by the shims to report their backend version.
 #
 DEPS_VERSIONS = dict()
+DEPS_VERSIONS["alga"] = "1.0.3"
 DEPS_VERSIONS["fastq-utils"] = "1.2.0"
 DEPS_VERSIONS["kneaddata"] = "0.10.0-7-gc721"
 DEPS_VERSIONS["multiqc"] = "v1.11-6-gd6d1"

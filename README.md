@@ -24,13 +24,13 @@ Default run on paired end Illumina reads:
 
     QAAP read_1.fq.gz read_2.fq.gz
 
-Same but do not assemble:
+Same and assemble:
 
-    QAAP -x assembly read_1.fq.gz read_2.fq.gz
+    QAAP -t DEFAULT,assembly read_1.fq.gz read_2.fq.gz
 
 Run on a metagenomic gut sample, excluding MGA:
 
-    QAAP --meta -x assembly read_1.fq.gz read_2.fq.gz
+    QAAP --meta read_1.fq.gz read_2.fq.gz
 
 Note that when omitted, the `-t/--target` parameter has value `DEFAULT`,
 which implies a standard set of steps.
@@ -51,7 +51,7 @@ See what targets (values for the `-t` parameter) are available:
 Service parameters can be passed to individual services in the pipeline.
 For instance, to change minimum trim length:
 
-    QAAP --trim-min-len=50 ...
+    QAAP --trl=50 ...
 
 For an overview of all available parameters, use `--help`:
 

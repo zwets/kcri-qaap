@@ -76,9 +76,9 @@ def is_illumina_pair(fqs):
     '''True iff the file tuple is a pair of Illumina reads.'''
     return len(fqs) == 2 and all(map(is_illumina_fastq, fqs))
 
-def is_ilumina_output_dir(dname):
+def is_illumina_output_dir(dname):
     '''True iff dname is a proper ilumina run output directory.'''
-    return os.path.isfile(os.path.join(dname, 'InterOp')) and \
+    return os.path.isdir(os.path.join(dname, 'InterOp')) and \
            os.path.isfile(os.path.join(dname, 'RunInfo.xml')) and \
            os.path.isfile(os.path.join(dname, 'runParameters.xml'))
 
