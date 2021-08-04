@@ -63,7 +63,7 @@ while [ $# -ge 1 ]; do
     --out-dir=*)   OUT_DIR="${1##--out-dir=}"; shift ;;
     -o|--out-dir)  OUT_DIR="$2"; shift 2 ;;
     -d|--db-dir*)  err_exit "set QAAP_DB_DIR instead of parameter -d/--db-dir when dockerised" ;;
-    --*=*|-h|--help|-v|--verbose|-l|--list-*)  # The currently known no-arg flags
+    --*=*|-h|--help|-v|--verbose|-m|--meta*|-a|--ampl*|-l|-s|--list-*)  # The currently known no-arg flags
         append_arg "$1"
         shift ;;
     -*)                                  # Assume all the rest come with arg
