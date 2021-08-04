@@ -143,9 +143,9 @@ per line, in a text file and pass this file with @FILENAME.
     if len(args.inputs) == 1 and os.path.isdir(args.inputs[0]):
         inp_dir = args.inputs[0]
         if os.path.isdir(os.path.join(inp_dir, 'Data','Intensities','BaseCalls')):
-            inp_dir = os.path.join(inp_dir, 'Data','Intensities','BaseCalls')
             if is_illumina_output_dir(inp_dir):
                 illumina_run_dir = os.path.abspath(inp_dir)
+            inp_dir = os.path.join(inp_dir, 'Data','Intensities','BaseCalls')
             il_fqs, pe_fqs, se_fqs, _ = find_inputs(inp_dir)
             if se_fqs: err_exit('cannot handle unpaired reads in Illumina run dir: %s' % inp_dir)
             elif pe_fqs: err_exit('QAAP autodetect broken: reads not identified as Illumina in: %s' % inp_dir)
@@ -216,6 +216,8 @@ per line, in a text file and pass this file with @FILENAME.
 
     # Set the workflow params based on user inputs present
     params = list()
+    if args.metagenomic:
+        params.append(Params.META)
     if illumina_run_dir:
         params.append(Params.ILLUM_RUN)
     if il_fqs:
