@@ -20,27 +20,27 @@ class TrimmomaticShim:
     def execute(self, sid, xid, blackboard, scheduler):
         '''Invoked by the executor.  Creates, starts and returns the Task.'''
 
-        execution = TrimmomaticExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
+        task = TrimmomaticExecution(SERVICE, VERSION, sid, xid, blackboard, scheduler)
 
         try:
-            pe_fqs = execution.get_input_pairs(dict())
-            se_fqs = execution.get_input_singles(dict())
+            pe_fqs = task.get_input_pairs(dict())
+            se_fqs = task.get_input_singles(dict())
 
             if not pe_fqs and not se_fqs:
                 UserException('no fastq files to process')
 
-            execution.start(pe_fqs, se_fqs)
+            task.start(pe_fqs, se_fqs)
 
         # Failing inputs will throw UserException
         except UserException as e:
-            execution.fail(str(e))
+            task.fail(str(e))
 
         # Deeper errors additionally dump stack
         except Exception as e:
             logging.exception(e)
-            execution.fail(str(e))
+            task.fail(str(e))
 
-        return execution
+        return task
 
 # Single execution of the service
 class TrimmomaticExecution(MultiJobExecution):

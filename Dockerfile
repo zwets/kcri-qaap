@@ -9,8 +9,8 @@
 # Load base Docker image
 # ----------------------------------------------------------------------
 
-# Use miniconda3:4.9.2 (Python 3.8, channel 'defaults' only)
-FROM continuumio/miniconda3:4.9.2
+# Use miniconda3 (Python 3.9, channel 'defaults' only)
+FROM continuumio/miniconda3:4.10.3p0
 
 
 # System dependencies
@@ -21,7 +21,6 @@ FROM continuumio/miniconda3:4.9.2
 # - default-jre for FastQC and Trimmomatic (and the mkdir for it)
 # - bowtie2, samtools, gd-graph for FastQ-Screen
 # - bowtie2, samtools, default-jre for pilon, for Unicycler
-# - trf for KneadData
 # - pigz for trim-galore
 # - cmake for alga
 
@@ -59,7 +58,7 @@ RUN echo "unset HISTFILE" >>/etc/bash.bashrc && \
 #   use it, it's huge, and it is non-free (why does Conda pick it?)
 # - psutil for picoline
 # - cutadapt from trim_galore (is also in Debian, but older?)
-# - trf for fastq-screen, is not in Debian
+# - trf for KneadData, is not in Debian
 
 #RUN conda config --add channels bioconda && \
 #    conda config --add channels defaults && \

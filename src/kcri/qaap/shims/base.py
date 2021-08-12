@@ -23,7 +23,7 @@ class UserException(Exception):
 
 ### class ServiceExecution
 #
-#   Base class for the executions returned by all QAAP Service shims.
+#   Base class for the task executions returned by all QAAP Service shims.
 #   Implements functionality common across all QAAP service executions.
 
 class ServiceExecution(Task):

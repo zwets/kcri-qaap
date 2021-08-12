@@ -103,6 +103,9 @@ per line, in a text file and pass this file with @FILENAME.
     group.add_argument('--tr-o', type=int, metavar='BASES', default=None, help="minimum adapter overlap to trim (default: 5 regular, 6 metagenomic)")
     group.add_argument('--tr-a', metavar='NAME', default=None, help="base name of the Trimmomatic adapter file [default]")
 
+    group = parser.add_argument_group('Cleaning parameters')
+    group.add_argument('--cl-d', metavar='DBNAME', default='hg37dec_v0.1', help="database name for cleaning")
+
     group = parser.add_argument_group('Quast parameters')
     group.add_argument('--qu-t', type=int, metavar='LEN', default=500, help="threshold contig length for Quast (500)")
 
