@@ -15,7 +15,6 @@ SERVICE, VERSION = "ContigsMetrics", DEPS_VERSIONS['unfasta']
 # Resource parameters: cpu, memory, disk, run time reqs
 MAX_CPU = 2
 MAX_MEM = 1
-MAX_SPC = 1
 MAX_TIM = 5 * 60
 
 
@@ -57,7 +56,7 @@ class ContigsMetricsExecution(MultiJobExecution):
 
                 # Cater for either gzipped or plain input using shell succinctness
                 cmd = "(gzip -dc '%s' 2>/dev/null || cat '%s') | uf | uf-stats -t" % (fa,fa) 
-                job_spec = JobSpec('sh', [ '-c', cmd, 'uf-stats' ], MAX_CPU, MAX_MEM, MAX_SPC, MAX_TIM)
+                job_spec = JobSpec('sh', [ '-c', cmd, 'uf-stats' ], MAX_CPU, MAX_MEM, MAX_TIM)
 
                 # We add the fid as userdata, so we can use it in collect_output
                 self.store_job_spec(job_spec.as_dict())

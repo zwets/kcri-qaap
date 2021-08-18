@@ -15,7 +15,6 @@ SERVICE, VERSION = "Quast", DEPS_VERSIONS['quast']
 # Backend resource parameters: cpu, memory, disk, run time reqs
 #MAX_CPU = -1 # all
 MAX_MEM = 12
-MAX_SPC = 1
 MAX_TIM = 20 * 60
 
 
@@ -76,7 +75,7 @@ class QuastShim:
             params.extend(fastas.keys())
             params.extend(fastas.values())
 
-            job_spec = JobSpec('quast.py', params, MAX_CPU, MAX_MEM, MAX_SPC, MAX_TIM)
+            job_spec = JobSpec('quast.py', params, MAX_CPU, MAX_MEM, MAX_TIM)
             task.store_job_spec(job_spec.as_dict())
             task.start(job_spec)
 

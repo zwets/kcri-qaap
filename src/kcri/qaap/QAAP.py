@@ -92,7 +92,6 @@ per line, in a text file and pass this file with @FILENAME.
     group = parser.add_argument_group('Scheduler parameters')
     group.add_argument('--max-cpus', metavar='N',   type=int, default=None, help="number of CPUs to allocate (default: all but 2)")
     group.add_argument('--max-mem',  metavar='GB',  type=int, default=None, help="total memory to allocate (default: 90%%)")
-    group.add_argument('--max-disc', metavar='GB',  type=int, default=None, help="total disc space to allocate (default: 80%%)")
     group.add_argument('--max-time', metavar='SEC', type=int, default=None, help="maximum overall run time (default: unlimited)")
     group.add_argument('--poll',     metavar='SEC', type=int, default=2, help="seconds between backend polls [2]")
 
@@ -241,7 +240,7 @@ per line, in a text file and pass this file with @FILENAME.
     os.chdir(args.out_dir)
 
     # Set up the workflow executor and the batches
-    scheduler = SubprocessScheduler(args.max_cpus, args.max_mem, args.max_disc, args.max_time, args.poll, not args.verbose)
+    scheduler = SubprocessScheduler(args.max_cpus, args.max_mem, args.max_time, args.poll, not args.verbose)
     executor = Executor(SERVICES, scheduler)
     workflow = Workflow(DEPENDENCIES, params, targets, excludes)
     executor.execute(workflow, blackboard)

@@ -14,7 +14,6 @@ from .versions import DEPS_VERSIONS
 SERVICE, VERSION = "Unicycler", DEPS_VERSIONS['unicycler']
 
 # Resource parameters per job, see below
-MAX_SPC = 1
 MAX_TIM = 60*60
 
 
@@ -83,7 +82,7 @@ class UnicyclerExecution(MultiJobExecution):
                     '-o', '.'
                 ]
 
-                job_spec = JobSpec('unicycler', params, req_cpu, req_mem, MAX_SPC, MAX_TIM)
+                job_spec = JobSpec('unicycler', params, req_cpu, req_mem, MAX_TIM)
                 self.store_job_spec(job_spec.as_dict())
                 self.add_job('unicycler-%s' % fid, job_spec, '%s/%s' % (self.sid, fid), fid)
 

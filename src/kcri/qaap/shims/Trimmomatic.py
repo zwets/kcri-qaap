@@ -64,37 +64,32 @@ class TrimmomaticExecution(MultiJobExecution):
             n_fqs = 2*len(pe_fqs) + len(se_fqs)
             thr_per_fq = min(4, max(1, int(max_thr / n_fqs)))
 
-            # Compute disc requirement per fq
-            inp_spc = functools.reduce(operator.add, map(lambda f: os.stat(f[0]).st_size + os.stat(f[1]).st_size, pe_fqs.values()), 
-                      functools.reduce(operator.add, map(lambda f: os.stat(f).st_size, se_fqs.values()),0))
-            spc_per_fq = max(0.5, inp_spc / n_fqs / (1024*1024*1024))
-
             # Schedule the pe jobs
             for fid, (fq1, fq2) in pe_fqs.items():
-                self.schedule_pe_job(fid, fq1, fq2, min_q, min_l, ad_pe, 2*thr_per_fq, 2*gb_per_thr, 2*spc_per_fq)
+                self.schedule_pe_job(fid, fq1, fq2, min_q, min_l, ad_pe, 2*thr_per_fq, 2*gb_per_thr)
 
             # Schedule the se jobs
             for fid, fq in se_fqs.items():
-                self.schedule_se_job(fid, fq, min_q, min_l, ad_se, thr_per_fq, gb_per_thr, spc_per_fq)
+                self.schedule_se_job(fid, fq, min_q, min_l, ad_se, thr_per_fq, gb_per_thr)
 
-    def schedule_pe_job(self, fid, fq1, fq2, min_q, min_l, adap, cpu, mem, spc):
+    def schedule_pe_job(self, fid, fq1, fq2, min_q, min_l, adap, cpu, mem):
 
         udata = (fid, '%s_R1.fq'%fid, '%s_U1.fq'%fid, '%s_R2.fq'%fid, '%s_U2.fq'%fid)
         params = ['PE', '-threads', cpu, '-summary', 'summary.txt', '-quiet', '-validatePairs' ]
         params.extend([fq1,fq2])
         params.extend(udata[1:])
         params.extend(['ILLUMINACLIP:%s:2:30:10:1:true'%adap,'LEADING:3','TRAILING:3','SLIDINGWINDOW:4:%d'%min_q, 'MINLEN:%d'%min_l])
-        job_spec = JobSpec('trimmomatic', params, cpu, mem, spc, 10*60)
+        job_spec = JobSpec('trimmomatic', params, cpu, mem, 10*60)
         self.store_job_spec(job_spec.as_dict())
         self.add_job('trimmomatic-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.sid,fid), udata)
 
-    def schedule_se_job(self, fid, fq, min_q, min_l, adap, cpu, mem, spc):
+    def schedule_se_job(self, fid, fq, min_q, min_l, adap, cpu, mem):
 
         udata = (fid, '%s.fq'%fid)
         params = ['PE', '-threads', cpu, '-summary', 'summary.txt', '-quiet' ]
         params.extend(udata[1])
         params.extend(['ILLUMINACLIP:%s:2:30:10:1:true'%adap,'LEADING:3','TRAILING:3','SLIDINGWINDOW:4:%d','MINLEN:%d'%(min_q, min_l)])
-        job_spec = JobSpec('trimmomatic', params, cpu, mem, spc, 5*60)
+        job_spec = JobSpec('trimmomatic', params, cpu, mem, 5*60)
         self.add_job_spec('se/%s'%fid, job_spec.as_dict())
         self.add_job('trimmomatic-se_%s' % fid, job_spec, '%s/se/%s' % (self.sid,fid), udata)
 

@@ -27,9 +27,9 @@ class KneadDataShim:
             se_fqs = dict()
 
             for k, (r1,r2,u1,u2) in blackboard.get_trimmed_pe_quads(dict()).items():
-                pe_fqs[k] = (r1,r2)
-                if u1: se_fqs[k+'_U1'] = u1
-                if u2: se_fqs[k+'_U2'] = u2
+                pe_fqs[k] = (os.path.abspath(r1),os.path.abspath(r2))
+                if u1: se_fqs[k+'_U1'] = os.path.abspath(u1)
+                if u2: se_fqs[k+'_U2'] = os.path.abspath(u2)
 
             se_fqs.update(blackboard.get_trimmed_se_fqs(dict()))
 
@@ -70,22 +70,18 @@ class KneadDataExecution(MultiJobExecution):
             n_fqs = 2*len(pe_fqs) + len(se_fqs)
             thr_per_fq = min(4, max(1, int(max_thr / n_fqs)))
 
-            # Compute disc requirement per fq
-            inp_spc = functools.reduce(operator.add, map(lambda f: os.stat(f[0]).st_size + os.stat(f[1]).st_size, pe_fqs.values()), 
-                      functools.reduce(operator.add, map(lambda f: os.stat(f).st_size, se_fqs.values()), 0))
-            spc_per_fq = max(0.5, inp_spc / (2*len(pe_fqs)+len(se_fqs)) / (1024*1024*1024))
-
             # Schedule the pe jobs
             for fid, (r1,r2) in pe_fqs.items():
-                self.schedule_pe_job(fid, r1, r2, db, 2*thr_per_fq, 2*gb_per_thr, 2*spc_per_fq)
+                self.schedule_pe_job(fid, r1, r2, db, 2*thr_per_fq, 2*gb_per_thr)
 
             # Schedule the se jobs
             for fid, fq in se_fqs.items():
-                self.schedule_se_job(fid, fq, db, thr_per_fq, gb_per_thr, spc_per_fq)
+                self.schedule_se_job(fid, fq, db, thr_per_fq, gb_per_thr)
 
-    def schedule_pe_job(self, fid, fq1, fq2, db, cpu, mem, spc):
+    def schedule_pe_job(self, fid, fq1, fq2, db, cpu, mem):
 
-        params = [ '-i', fq1, '-i', fq2, '-o', '.', '-db', db, '-t', cpu, '--max-memory', '%dG' % mem, '--bypass-trim', '--run-trim-repetitive' ]
+        params = [ '-i', fq1, '-i', fq2, '-o', '.', '-db', db, '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
+                   #'--fastqc', 'fastqc', '--trf', 'trf', '--bypass-trim', '--run-trim-repetitive' ]
 
           #--output-prefix OUTPUT_PREFIX
           #--run-fastqc-start
@@ -115,18 +111,16 @@ class KneadDataExecution(MultiJobExecution):
           #--pi PI
           #--minscore MINSCORE
           #--maxperiod MAXPERIOD
-          #--fastqc FASTQC_PATH
-          #--trf PATH_TO_TRF
 
-        job_spec = JobSpec('kneaddata', params, cpu, mem, spc, 20*60)
+        job_spec = JobSpec('kneaddata', params, cpu, mem, 20*60)
         self.add_job_spec('pe/%s' % fid, job_spec.as_dict())
         self.add_job('kneaddata-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.sid,fid), (True,fid))
 
-    def schedule_se_job(self, fid, fq, db, cpu, mem, spc):
+    def schedule_se_job(self, fid, fq, db, cpu, mem):
 
-        params = [ '-i', fq, '-o', '.', '-db', db, '-t', cpu, '--max-memory', '%dG' % mem, '--bypass-trim', '--run-trim-repetitive' ]
+        params = [ '-i', fq, '-o', '.', '-db', db, '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
 
-        job_spec = JobSpec('kneaddata', params, cpu, mem, spc, 10*60)
+        job_spec = JobSpec('kneaddata', params, cpu, mem, 10*60)
         self.add_job_spec('se/%s' % fid, job_spec.as_dict())
         self.add_job('kneaddata-se_%s' % fid, job_spec, '%s/se/%s' % (self.sid,fid), (False,fid))
 
@@ -152,7 +146,7 @@ class KneadDataExecution(MultiJobExecution):
             bag[fid] = res
             results['pe'] = bag
         else:
-            fq = job.file_path(fid + '_trimmed.fq')
+            fq = job.file_path(fid + '_kneaddata.fastq')
             res['fastq'] = fq
             self._blackboard.add_cleaned_se_fq(fid, fq)
 

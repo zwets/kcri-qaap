@@ -284,7 +284,7 @@ class QAAPBlackboard(Blackboard):
         '''Return the dict with all cleaned pe quad.'''
         return self.get_qaap_output('cleaned_pe_fqs', default)
 
-    def add_cleaned_se_fqs(self, fid, fq):
+    def add_cleaned_se_fq(self, fid, fq):
         '''Stores the cleaned SE fq for fid and creates symlink under outputs.'''
         self.put_qaap_output('cleaned_se_fqs/%s' % fid, self.symlink_output_file('cleaned', fid, fq, '.fq'))
 

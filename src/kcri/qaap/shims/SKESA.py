@@ -14,7 +14,6 @@ from .versions import DEPS_VERSIONS
 SERVICE, VERSION = "SKESA", DEPS_VERSIONS['skesa']
 
 # Resource parameters per job, see below
-MAX_SPC = 1
 MAX_TIM = 15 * 60
 
 # Output file ex work dir
@@ -67,7 +66,7 @@ class SKESAExecution(MultiJobExecution):
                     '--reads', '%s,%s' % pair
                 ]
 
-                job_spec = JobSpec('skesa', params, max_cpu, max_mem, MAX_SPC, MAX_TIM)
+                job_spec = JobSpec('skesa', params, max_cpu, max_mem, MAX_TIM)
                 self.store_job_spec(job_spec.as_dict())
                 self.add_job('skesa-%s' % fid, job_spec, '%s/%s' % (self.sid, fid), fid)
 

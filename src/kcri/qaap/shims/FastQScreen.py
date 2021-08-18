@@ -37,7 +37,6 @@ class FastQScreenShim:
             max_par = int(task._scheduler.max_mem * 4)    # each thread needs 250MB
             cpu = min(task._scheduler.max_cpu, len(fastqs), max_par)
             mem = cpu / 4               # each job 250M
-            spc = n_fq / 10             # each job at most 100M
             tim = n_fq / cpu * 5 * 60   # each job at most 5 min
 
             # Set up parameters
@@ -50,7 +49,7 @@ class FastQScreenShim:
 
             params.extend(fastqs)
 
-            job_spec = JobSpec('fastq_screen', params, cpu, mem, spc, tim)
+            job_spec = JobSpec('fastq_screen', params, cpu, mem, tim)
             task.store_job_spec(job_spec.as_dict())
             task.start(job_spec)
 

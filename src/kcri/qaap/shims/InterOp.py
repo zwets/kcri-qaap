@@ -30,7 +30,7 @@ class InterOpShim:
             # Set up job
             cmd = "interop_summary --csv=1 '%s' >summary.csv && interop_index-summary --csv=1 '%s' >index-summary.csv" % (d,d)
 
-            job_spec = JobSpec('sh', [ '-c', cmd, 'interop' ], 1, 1, 0.01, 10*60)
+            job_spec = JobSpec('sh', [ '-c', cmd, 'interop' ], 1, 1, 10*60)
             task.store_job_spec(job_spec.as_dict())
             task.start(job_spec)
 

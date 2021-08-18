@@ -130,8 +130,12 @@ RUN cd ext/trimmomatic && \
 # Install fastq-screen by adding it to the PATH
 ENV PATH=/usr/src/ext/fastq-screen:$PATH
 
-# Install kneaddata
+# Install kneaddata (perform patches until fix done upstream)
 RUN cd ext/kneaddata && \
+    sed -i -Ee 's/sys\.exit\("ERROR: Unable to write file: " \+ file\)/sys.exit("ERROR: Unable to write file: " + new_file)/' \
+        kneaddata/utilities.py && \
+    sed -i -Ee 's/input_fastq\.replace\(os\.path\.splitext\(input_fastq\)\[-1\],config\.fasta_file_extension\)/input_fastq + config.fasta_file_extension/' \
+        kneaddata/run.py && \
     python setup.py install --bypass-dependencies-install && \
     rm -rf build
 

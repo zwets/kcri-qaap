@@ -65,23 +65,18 @@ class TrimGaloreExecution(MultiJobExecution):
             pe_cores, pe_cpu = (4, 12) if 12*len(pe_fqs) <= self._scheduler.max_cpu else (1,1)
             se_cores, se_cpu = (2, 8) if 8*len(se_fqs) <= self._scheduler.max_cpu else (1,1)
 
-            # Compute disc requirement per fq
-            inp_spc = functools.reduce(operator.add, map(lambda f: os.stat(f[0]).st_size + os.stat(f[1]).st_size, pe_fqs.values()), 
-                      functools.reduce(operator.add, map(lambda f: os.stat(f).st_size, se_fqs.values()), 0))
-            spc_per_fq = max(0.5, inp_spc / (2*len(pe_fqs)+len(se_fqs)) / (1024*1024*1024))
-
             # Guesstimate of mem requirement
             pe_mem, se_mem = pe_cores * 0.5, se_cores * 0.25
 
             # Schedule the pe jobs
             for fid, (fq1, fq2) in pe_fqs.items():
-                self.schedule_pe_job(fid, fq1, fq2, pe_cores, pe_cpu, pe_mem, 2*spc_per_fq)
+                self.schedule_pe_job(fid, fq1, fq2, pe_cores, pe_cpu, pe_mem)
 
             # Schedule the se jobs
             for fid, fq in se_fqs.items():
-                self.schedule_se_job(fid, fq, se_cores, se_cpu, se_mem, spc_per_fq)
+                self.schedule_se_job(fid, fq, se_cores, se_cpu, se_mem)
 
-    def schedule_pe_job(self, fid, fq1, fq2, cores, cpu, mem, spc):
+    def schedule_pe_job(self, fid, fq1, fq2, cores, cpu, mem):
 
         params = [ '--paired', '--retain_unpaired', '--dont_gzip', '--cores', cores,
             '--nextseq' if self._blackboard.is_nextseq() else '--quality', self.min_q,
@@ -89,11 +84,11 @@ class TrimGaloreExecution(MultiJobExecution):
             '--stringency', self.min_o,
             fq1, fq2 ]
 
-        job_spec = JobSpec('trim_galore', params, cpu, mem, spc, 5*60)
+        job_spec = JobSpec('trim_galore', params, cpu, mem, 5*60)
         self.add_job_spec('pe/%s' % fid, job_spec.as_dict())
         self.add_job('trim_galore-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.sid,fid), (True,fid))
 
-    def schedule_se_job(self, fid, fq, cores, cpu, mem, spc):
+    def schedule_se_job(self, fid, fq, cores, cpu, mem):
 
         params = [ '--dont_gzip', '--cores', cores,
             '--nextseq' if self._blackboard.is_nextseq() else '--quality', self.min_q,
@@ -101,7 +96,7 @@ class TrimGaloreExecution(MultiJobExecution):
             '--stringency', self.min_o,
             fq ]
 
-        job_spec = JobSpec('trim_galore', params, cpu, mem, spc, 5*60)
+        job_spec = JobSpec('trim_galore', params, cpu, mem, 5*60)
         self.add_job_spec('se/%s' % fid, job_spec.as_dict())
         self.add_job('trim_galore-se_%s' % fid, job_spec, '%s/se/%s' % (self.sid,fid), (False,fid))
 

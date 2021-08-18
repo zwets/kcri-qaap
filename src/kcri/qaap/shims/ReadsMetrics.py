@@ -16,7 +16,6 @@ SERVICE, VERSION = "ReadsMetrics", DEPS_VERSIONS['fastq-utils']
 # Resource parameters per job: cpu, memory, disk, run time reqs
 MAX_CPU = 2
 MAX_MEM = 0.01
-MAX_SPC = 0.001
 MAX_TIM = 5 * 60
 
 # The Service shim class
@@ -62,7 +61,7 @@ class ReadsMetricsExecution(MultiJobExecution):
 
                 # We use shell succinctness to cater for either gzipped or plain input
                 cmd = "(gzip -dc '%s' 2>/dev/null || cat '%s') | fastq-stats" % (fpath,fpath) 
-                job_spec = JobSpec('sh', [ '-c', cmd, 'fastq-stats' ], MAX_CPU, MAX_MEM, MAX_SPC, MAX_TIM)
+                job_spec = JobSpec('sh', [ '-c', cmd, 'fastq-stats' ], MAX_CPU, MAX_MEM, MAX_TIM)
 
                 # We add the fid as userdata, so we can use it in collect_output
                 self.store_job_spec(job_spec.as_dict())
