@@ -134,13 +134,13 @@ class KneadDataExecution(MultiJobExecution):
         res['summary'] = self.collect_summary(job, is_pe, fid)
 
         if is_pe:
-            fastqs = (
-                    job.file_path(fid + '_R1_val_1.fq'),
-                    job.file_path(fid + '_R2_val_2.fq'),
-                    None,  # TODO
+            fqs = (
+                    job.file_path(fid + '_R1_kneaddata_paired_1.fastq'),
+                    job.file_path(fid + '_R1_kneaddata_paired_2.fastq'),  # yes, the R1 is correct there
+                    None,  # TODO - or not, the U1 is in the se bag
                     None)  # TODO
-            res['fastqs'] = fastqs
-            self._blackboard.add_cleaned_pe_quad(fid, fastqs)
+            res['fastqs'] = fqs
+            self._blackboard.add_cleaned_pe_quad(fid, fqs)
 
             bag = results.get('pe', dict())
             bag[fid] = res
