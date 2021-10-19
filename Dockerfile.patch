@@ -21,10 +21,11 @@ WORKDIR /usr/src
 #COPY ext/something ext/
 #RUN cd ext/something && make clean && make && mv something /usr/local/bin/ && cd .. && rm -rf something
 #RUN mkdir -p ext/picoline
-#COPY ext/picoline ext/picoline
 #RUN cd ext/picoline && python3 setup.py install && cd .. && rm -rf picoline
 #COPY ext/fastq-utils ext/fastq-utils
 #RUN cd ext/fastq-utils && make clean && make fastq-stats && cp fastq-stats /usr/local/bin/ && cd .. && rm -rf fastq-utils
+COPY ext/kneaddata ext/kneaddata
+RUN cd ext/kneaddata && python setup.py install --bypass-dependencies-install && rm -rf build
 
 # KCRI QAAP package
 #COPY src/kcri/qaap/__init__.py kcri/qaap/
@@ -32,8 +33,8 @@ WORKDIR /usr/src
 #COPY src/kcri/qaap/data.py kcri/qaap/
 #COPY src/kcri/qaap/services.py kcri/qaap/
 #COPY src/kcri/qaap/shims/SKESA.py kcri/qaap/shims/
-COPY src ./
-RUN python3 setup.py install
+#COPY src ./
+#RUN python3 setup.py install
 
 # Drop down to the original user and workdir
 USER nobody:nogroup

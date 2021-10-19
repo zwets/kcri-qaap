@@ -188,8 +188,8 @@ class QAAPBlackboard(Blackboard):
            Return quad with the filenames replaced by the symlinks.'''
         out_dir = os.path.join(self.get_outputs_dir(), sub_dir)
         return (
-            self.make_symlink(out_dir, lst[0], fid+'_R1.fq'),
-            self.make_symlink(out_dir, lst[1], fid+'_R2.fq'),
+            self.make_symlink(out_dir, lst[0], fid+'_R1.fq') if lst[0] else lst[0],
+            self.make_symlink(out_dir, lst[1], fid+'_R2.fq') if lst[1] else lst[1],
             self.make_symlink(out_dir, lst[2], fid+'_U1.fq') if lst[2] else lst[2],
             self.make_symlink(out_dir, lst[3], fid+'_U2.fq') if lst[3] else lst[3] )
 
