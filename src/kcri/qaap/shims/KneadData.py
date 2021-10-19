@@ -79,7 +79,7 @@ class KneadDataExecution(MultiJobExecution):
 
     def schedule_pe_job(self, fid, fq1, fq2, dbs, cpu, mem):
 
-        params = [ '-i1', fq1, '-i2', fq2, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
+        params = [ '-i1', fq1, '-i2', fq2, '--output-prefix', fid, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim', '--bypass-trf' ]
                #'--fastqc', 'fastqc', '--trf', 'trf', '--run-trim-repetitive' ]
         for db in dbs: params += [ '-db', db ]
 
