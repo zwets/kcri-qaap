@@ -31,7 +31,8 @@ class KneadDataShim:
                 if u1: se_fqs[k+'_U1'] = os.path.abspath(u1)
                 if u2: se_fqs[k+'_U2'] = os.path.abspath(u2)
 
-            se_fqs.update(blackboard.get_trimmed_se_fqs(dict()))
+            for k, fq in blackboard.get_trimmed_se_fqs(dict()).items():
+                se_fqs[k] = os.path.abspath(fq)
 
             if not pe_fqs and not se_fqs:
                 UserException('no trimmed files to process')
@@ -118,7 +119,7 @@ class KneadDataExecution(MultiJobExecution):
 
     def schedule_se_job(self, fid, fq, dbs, cpu, mem):
 
-        params = [ '-un', fq, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
+        params = [ '-un', fq, '--output-prefix', fid, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim', '--bypass-trf' ]
         for db in dbs: params += [ '-db', db ]
 
         job_spec = JobSpec('kneaddata', params, cpu, mem, 10*60)
@@ -134,12 +135,14 @@ class KneadDataExecution(MultiJobExecution):
         res = dict()
         res['summary'] = self.collect_summary(job, is_pe, fid)
 
+        nonz_file = lambda f: f if os.path.isfile(f) and os.path.getsize(f) != 0 else None
+
         if is_pe:
-            fqs = (
-                    job.file_path(fid + '_R1_kneaddata_paired_1.fastq'),
-                    job.file_path(fid + '_R1_kneaddata_paired_2.fastq'),  # yes, the R1 is correct there
-                    None,  # TODO - or not, the U1 is in the se bag
-                    None)  # TODO
+            fqs = ( nonz_file(job.file_path(fid + '_paired_1.fastq')),
+                    nonz_file(job.file_path(fid + '_paired_2.fastq')),
+                    nonz_file(job.file_path(fid + '_unmatched_1.fastq')),
+                    nonz_file(job.file_path(fid + '_unmatched_2.fastq')) )
+
             res['fastqs'] = fqs
             self._blackboard.add_cleaned_pe_quad(fid, fqs)
 
@@ -147,9 +150,9 @@ class KneadDataExecution(MultiJobExecution):
             bag[fid] = res
             results['pe'] = bag
         else:
-            fq = job.file_path(fid + '_kneaddata.fastq')
+            fq = nonz_file(job.file_path(fid + '.fastq'))
             res['fastq'] = fq
-            self._blackboard.add_cleaned_se_fq(fid, fq)
+            if fq: self._blackboard.add_cleaned_se_fq(fid, fq)
 
         bag = results.get('pe' if is_pe else 'se', dict())  # cater for when there is one already
         bag[fid] = res
