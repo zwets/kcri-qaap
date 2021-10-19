@@ -9,9 +9,9 @@ pipeline for QC and assembly at Kilimanjaro Clinical Research Institute
 
 The QAAP orchestrates standard workflows for processing sequencing reads:
 
- * Reads (FastQC, FastQ-Screen, fastq-stats)
+ * Reads QC (FastQC, FastQ-Screen, fastq-stats)
  * Trimming and cleaning (Trimmomatic, Trim Galore, KneadData)
- * Genome assembly (SKESA, SPAdes, metaSPAdes, flye)
+ * Genome assembly (SKESA, SPAdes, Unicycler, alga)
  * Assembly QC (Quast, MetaQuast)
 
 The QAAP comes with sensible default settings and standard workflows for
@@ -30,19 +30,19 @@ Same and assemble:
 
 Run on a metagenomic gut sample, excluding MGA:
 
-    QAAP --meta read_1.fq.gz read_2.fq.gz
+    QAAP --metagenomic read_1.fq.gz read_2.fq.gz
 
-Note that when omitted, the `-t/--target` parameter has value `DEFAULT`,
-which implies a standard set of steps.
+Note that when omitted, the `-t/--target` parameter has value `DEFAULT`, which
+ performs QC metrics and screening but no trimming, cleaning, or assembly.
 
-Perform _only_ metrics (by omitting the DEFAULT target):
+To perform _only_ metrics (by omitting the DEFAULT target):
 
     QAAP -t metrics read_1.fq.gz read_2.fq.gz assembly.fna
 
 See what targets (values for the `-t` parameter) are available:
 
     QAAP --list-targets
-    -> metrics, reads-qc, trimming, cleaning, post-qc, assembly, ...
+    -> metrics, reads-qc, screen, trim, assemble, polish, ...
 
 > Note how the targets are 'logical' names for what the QAAP must do.
 > The QAAP will determine which services to involve, in what order, and
@@ -51,7 +51,7 @@ See what targets (values for the `-t` parameter) are available:
 Service parameters can be passed to individual services in the pipeline.
 For instance, to change minimum trim length:
 
-    QAAP --trl=50 ...
+    QAAP --tr-l=50 ...
 
 For an overview of all available parameters, use `--help`:
 
@@ -63,10 +63,6 @@ For an overview of all available parameters, use `--help`:
 The QAAP was developed to run on a moderately high-end Linux workstation.
 It is most easily installed in a Docker container, but could also be set
 up in a Conda environment.
-
-The installation has two major steps: building the Docker image, and
-downloading the databases.
-
 
 ### Installation - Docker Image
 
@@ -101,17 +97,23 @@ Run on test data:
     # Test run QAAP on an assembled sample genome
     test/test-01-fq.sh
 
-If the tests above all end with with `[OK]`, you are good to go.
+If the tests above end with with `[OK]`, you are good to go.
 
+### Installation - screen & clean databases
 
-### Installation - FastQ Screen & KneadData databases
+FastQScreen (screening) and KneadData (cleaning) require bowtie2 indexes.
+These can be created from FASTA files using bowtie2-build:
 
-Pick a location for the databases, then:
+    bowtie2-build /path/to/fasta /path/to/basename
 
-    # For convenience, set this QAAP_DB_DIR in bin/qaap-container-run
-    QAAP_DB_DIR=/hpc/data/genomics/qaap/db   # KCRI path, replace by yours
+The `/path/to/basename`s can then be passed as comma-separated lists in
+the `--sc-d` parameter, or through the `QAAP_SCREEN_DBS` environment variable.
 
-@TODO: how to build database index@
+By default the databases are used for screening and cleaning.  If you want
+different databases for cleaning, specify these with the `--cl-d` parameter.
+
+It may be convenient to set a default list of screening/cleaning databases
+using `QAAP_SCREEN_DBS=...` in `bin/qaap-container-run`.
 
 
 ## Usage
@@ -129,7 +131,7 @@ Run a terminal shell in the container:
 Run any of the services in the container directly:
 
     qaap-container-run trimmomatic --help
-    qaap-container-run kcst --help
+    qaap-container-run skesa --help
 
 
 ## Development / Upgrades
@@ -171,3 +173,4 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
+

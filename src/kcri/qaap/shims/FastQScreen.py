@@ -3,7 +3,7 @@
 # kcri.qaap.shims.FastQScreen - implements the FastQScreenShim
 #
 
-import os, logging
+import os, logging, tempfile
 from pico.workflow.executor import Task
 from pico.jobcontrol.job import JobSpec, Job
 from .base import ServiceExecution, UserException
@@ -25,8 +25,7 @@ class FastQScreenShim:
          # Get the task parameters from the blackboard
         try:
             fastqs = task.get_input_fastqs().values() if Services(sid) == Services.FASTQSCREEN else \
-                     task.get_trimmed_fastqs().values() if Services(sid) == Services.TRIMMED_FASTQSCREEN else \
-                     task.get_cleaned_fastqs().values() if Services(sid) == Services.CLEANED_FASTQSCREEN else \
+                     task.get_cleaned_fastqs().values() if Services(sid) == Services.CLEAN_FASTQSCREEN else \
                      None
 
             if fastqs is None: raise Exception('unknown ident in FastQScreenShim: %s' % sid.value)
@@ -39,8 +38,12 @@ class FastQScreenShim:
             mem = cpu / 4               # each job 250M
             tim = n_fq / cpu * 5 * 60   # each job at most 5 min
 
+            # Retrieve the screening databases
+            dbs = task.get_screening_dbs()
+
             # Set up parameters
             params = [
+                '--conf', '@PLACEHOLDER@',
                 '--outdir', '.',
                 '--force',
                 '--quiet',
@@ -51,7 +54,7 @@ class FastQScreenShim:
 
             job_spec = JobSpec('fastq_screen', params, cpu, mem, tim)
             task.store_job_spec(job_spec.as_dict())
-            task.start(job_spec)
+            task.start(job_spec, dbs)
 
         # Failing inputs will throw UserException
         except UserException as e:
@@ -67,17 +70,32 @@ class FastQScreenShim:
 
 # Single execution of the service
 class FastQScreenExecution(ServiceExecution):
-    '''A single execution of the Quast service'''
+    '''A single execution of the service'''
 
     _job = None
 
-    def start(self, job_spec):
+    def start(self, job_spec, dbs):
         if self.state == Task.State.STARTED:
-            self._job = self._scheduler.schedule_job('fastq-screen', job_spec, self.sid)
+
+            # Generate the FastQScreen config file with the DB paths
+            cfg = tempfile.NamedTemporaryFile(mode='w', delete=False)
+            for i,db in self.get_screening_dbs().items():
+                print('DATABASE\t%s\t%s' % (i,db), file=cfg)
+            cfg.close()
+
+            # Put the path to the config file in the parameters
+            self._cfg = cfg.name
+            job_spec.args[1] = self._cfg
+
+            self._job = self._scheduler.schedule_job('fastq-screen-%s' % self.sid, job_spec, self.sid)
+
 
     def collect_output(self, job):
         '''Collect the job output and put on blackboard.
            This method is called by super().report() once job is done.'''
+
+        # Clean up the config file
+        os.unlink(job.spec.args[1])
 
         # In all cases, store FastQScreen output path
         self.store_results(dict(output_path = job.file_path("")))

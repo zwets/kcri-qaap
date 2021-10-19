@@ -58,9 +58,8 @@ class KneadDataExecution(MultiJobExecution):
     def start(self, pe_fqs, se_fqs):
         if self.state == Task.State.STARTED:
 
-            # Retrieve the database path
-            db_path = self.get_db_path('kneaddata')
-            db = os.path.join(db_path, self.get_user_input('cl_d', 'hg37dec_v0.1'))
+            # Retrieve the clean databases
+            dbs = self.get_cleaning_dbs()
 
             # Compute max requestable threads
             gb_per_thr = 0.250
@@ -72,16 +71,17 @@ class KneadDataExecution(MultiJobExecution):
 
             # Schedule the pe jobs
             for fid, (r1,r2) in pe_fqs.items():
-                self.schedule_pe_job(fid, r1, r2, db, 2*thr_per_fq, 2*gb_per_thr)
+                self.schedule_pe_job(fid, r1, r2, dbs, 2*thr_per_fq, 2*gb_per_thr)
 
             # Schedule the se jobs
             for fid, fq in se_fqs.items():
-                self.schedule_se_job(fid, fq, db, thr_per_fq, gb_per_thr)
+                self.schedule_se_job(fid, fq, dbs, thr_per_fq, gb_per_thr)
 
-    def schedule_pe_job(self, fid, fq1, fq2, db, cpu, mem):
+    def schedule_pe_job(self, fid, fq1, fq2, dbs, cpu, mem):
 
-        params = [ '-i', fq1, '-i', fq2, '-o', '.', '-db', db, '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
-                   #'--fastqc', 'fastqc', '--trf', 'trf', '--bypass-trim', '--run-trim-repetitive' ]
+        params = [ '-i1', fq1, '-i2', fq2, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
+               #'--fastqc', 'fastqc', '--trf', 'trf', '--run-trim-repetitive' ]
+        for db in dbs: params += [ '-db', db ]
 
           #--output-prefix OUTPUT_PREFIX
           #--run-fastqc-start
@@ -116,9 +116,10 @@ class KneadDataExecution(MultiJobExecution):
         self.add_job_spec('pe/%s' % fid, job_spec.as_dict())
         self.add_job('kneaddata-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.sid,fid), (True,fid))
 
-    def schedule_se_job(self, fid, fq, db, cpu, mem):
+    def schedule_se_job(self, fid, fq, dbs, cpu, mem):
 
-        params = [ '-i', fq, '-o', '.', '-db', db, '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
+        params = [ '-un', fq, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
+        for db in dbs: params += [ '-db', db ]
 
         job_spec = JobSpec('kneaddata', params, cpu, mem, 10*60)
         self.add_job_spec('se/%s' % fid, job_spec.as_dict())

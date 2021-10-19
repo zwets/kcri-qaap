@@ -11,7 +11,8 @@ from .data import QAAPBlackboard, Platform
 from .services import SERVICES
 from .workflow import DEPENDENCIES
 from .workflow import SystemTargets, UserTargets, Services, Params
-from .filescan import detect_filetype, scan_inputs, find_inputs, is_illumina_output_dir
+from .filescan import detect_filetype, scan_inputs, find_inputs, \
+    check_screen_db, is_illumina_output_dir
 from . import __version__
 
 # Global variables and defaults
@@ -26,7 +27,6 @@ def err_exit(msg, *args):
 def UserTargetOrService(s):
     try: return UserTargets(s)
     except: return Services(s)
-
 
 # MAIN -------------------------------------------------------------------
 
@@ -78,12 +78,11 @@ per line, in a text file and pass this file with @FILENAME.
     group.add_argument('-x', '--exclude',       metavar='TARGET_OR_SERVICE[,...]', help="targets and/or services to exclude from running")
     group.add_argument('-o', '--out-dir',       metavar='PATH', default='.', help="base directory to write output to [PWD] (must be relative when dockerised)")
     group.add_argument('-p', '--platform',      metavar='NAME', default=None, help="sequencing platform (%s), default is autodetect" % ','.join(v.value for v in Platform))
-    group.add_argument('-m', '--metagenomic',   action='store_true', help="specifies that the run is metagenomic")
+    group.add_argument('-m', '--meta',          action='store_true', help="specifies that the run is metagenomic")
     group.add_argument('-a', '--amplicon',      action='store_true', help="specifies that the run is amplicon-based")
     group.add_argument('-l', '--list-targets',  action='store_true', help="list the available targets")
     group.add_argument('-s', '--list-services', action='store_true', help="list the available services")
     group.add_argument('-r', '--reference',     metavar='FASTA', help="path to a reference genome to use in QC")
-    group.add_argument('-d', '--db-root',       metavar='PATH', default='/databases', help="base path to databases (leave default when dockerised)")
 #    group.add_argument('-z', '--unzip',         action='store_true', help="unzip all gzipped files prior to running the pipeline (faster at the cost of disk space)")
     group.add_argument('-v', '--verbose',       action='store_true', help="write verbose output to stderr")
     group.add_argument('inputs', metavar='DIR_OR_FILES', nargs='*', default=[], help="input directory or list of fastq files")
@@ -98,12 +97,15 @@ per line, in a text file and pass this file with @FILENAME.
     # Service specific arguments
     group = parser.add_argument_group('Trimming parameters')
     group.add_argument('--tr-q', type=int, metavar='Q', default=None, help="cut-off Q score (default: 10 regular, 20 metagenomic)")
-    group.add_argument('--tr-l', type=int, metavar='LEN', default=None, help="minimum read length to keep (default: 36 regular, 72 metagenomic)")
+    group.add_argument('--tr-l', type=int, metavar='LEN', default=None, help="minimum read length to keep (default: 36 regular, 48 metagenomic)")
     group.add_argument('--tr-o', type=int, metavar='BASES', default=None, help="minimum adapter overlap to trim (default: 5 regular, 6 metagenomic)")
     group.add_argument('--tr-a', metavar='NAME', default=None, help="base name of the Trimmomatic adapter file [default]")
 
+    group = parser.add_argument_group('Screening parameters')
+    group.add_argument('--sc-d', metavar='PATHS', default=None, help="comma-separated list of databases for screening, default is value of QAAP_SCREEN_DBS)")
+
     group = parser.add_argument_group('Cleaning parameters')
-    group.add_argument('--cl-d', metavar='DBNAME', default='hg37dec_v0.1', help="database name for cleaning")
+    group.add_argument('--cl-d', metavar='PATHS', default=None, help="comma-separated list of databases for cleaning, if different of those for screening")
 
     group = parser.add_argument_group('Quast parameters')
     group.add_argument('--qu-t', type=int, metavar='LEN', default=500, help="threshold contig length for Quast (500)")
@@ -185,6 +187,11 @@ per line, in a text file and pass this file with @FILENAME.
             err_exit('reference not a FASTA file: %s', args.reference)
         reference = os.path.abspath(args.reference)
 
+    # Parse the screening / cleaning databases
+    dbs = args.sc_d if args.sc_d else os.getenv('QAAP_SCREEN_DBS')
+    screen_dbs = dict(map(check_screen_db, dbs.split(',')) if dbs else list())
+    clean_dbs = list(dict(map(check_screen_db, args.cl_d.split(','))) if args.cl_d else screen_dbs.values())
+
     # Parse the --list options
     if args.list_targets:
         print('targets:', ','.join(t.value for t in UserTargets))
@@ -198,11 +205,6 @@ per line, in a text file and pass this file with @FILENAME.
         else:
             sys.exit(0)
 
-    # Check existence of the db_root directory
-    if not os.path.isdir(args.db_root):
-        err_exit('no such directory for --db-root: %s', args.db_root)
-    db_root = os.path.abspath(args.db_root)
-
     # Create the output directory
     try:
         os.makedirs(args.out_dir, exist_ok=True)
@@ -214,11 +216,10 @@ per line, in a text file and pass this file with @FILENAME.
     blackboard.start_run(SERVICE, VERSION, vars(args))
     blackboard.put_base_path(os.path.abspath(args.out_dir))
     blackboard.put_illumina_run_dir(illumina_run_dir)
-    blackboard.put_db_root(db_root)
 
     # Set the workflow params based on user inputs present
     params = list()
-    if args.metagenomic:
+    if args.meta:
         params.append(Params.META)
     if illumina_run_dir:
         params.append(Params.ILLUM_RUN)
@@ -235,6 +236,10 @@ per line, in a text file and pass this file with @FILENAME.
     if fastas:
         params.append(Params.FASTAS)
         blackboard.put_input_fastas(fastas)
+    if screen_dbs:
+        blackboard.put_screening_dbs(screen_dbs)
+    if clean_dbs:
+        blackboard.put_cleaning_dbs(clean_dbs)
 
     # Now that path handling has been done we can safely change our PWD
     os.chdir(args.out_dir)
@@ -254,24 +259,13 @@ per line, in a text file and pass this file with @FILENAME.
     with open('qaap-results.json', 'w') as f_json:
         json.dump(blackboard.as_dict(args.verbose), f_json)
 
-    # Write a TSV summary?
+    # Write the qaap-summary.tsv (stub for now)
     with open('qaap-summary.tsv', 'w') as f_tsv:
-        commasep = lambda l: ','.join(l) if l else ''
-        b = blackboard
-        d = dict({
-            's_id': 'TODO',
-            'n_reads': b.get('services/ReadsMetrics/results/n_reads', 'NA'),
-            'nt_read': b.get('services/ReadsMetrics/results/n_bases', 'NA'),
-            'pct_q30': b.get('services/ReadsMetrics/results/pct_q30', 'NA'),
-            'n_ctgs': b.get('services/ContigsMetrics/results/n_seqs', 'NA'),
-            'nt_ctgs': b.get('services/ContigsMetrics/results/tot_len', 'NA'),
-            'n1':  b.get('services/ContigsMetrics/results/max_len', 'NA'),
-            'n50':  b.get('services/ContigsMetrics/results/n50', 'NA'),
-            'l50':  b.get('services/ContigsMetrics/results/l50', 'NA'),
-            'pct_gc':  b.get('services/ContigsMetrics/results/pct_gc', b.get('services/ReadsMetrics/results/pct_gc', 'NA')),
-            })
-        print('\t'.join(d.keys()), file=f_tsv)
-        print('\t'.join(map(lambda v: v if v else '', d.values())), file=f_tsv)
+        atts = 'id', 'n_reads', 'nt_read', 'pct_q30', 'pct_gc' #, 'n_ctgs', 'nt_ctgs', 'n1', 'n50', 'l50'
+        print('\t'.join(atts), file=f_tsv)
+        for i, d in blackboard.get('services/ReadsMetrics/results', dict()).items():
+            print(i, end='\t', file=f_tsv)
+            print('\t'.join(map(lambda a: str(d.get(a, 'NA')), atts)), file=f_tsv)
 
     # Done done
     return 0

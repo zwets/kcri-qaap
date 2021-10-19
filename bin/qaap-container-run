@@ -4,8 +4,7 @@
 #
 #   Convenience wrapper for running the kcri-qaap docker container.
 #
-#   NOTE: you will need to set the QAAP_DB_DIR and QAAP_IMAGE variables
-#   below to match your installation, or override them on invocation.
+#   NOTE: you may want to set the QAAP_SCREEN_DBS variable below.
 #
 # USAGE
 #
@@ -15,7 +14,7 @@
 #       qaap-container-run TrimmomaticPE ...
 #       qaap-container-run SKESA ...
 #
-#   Which of course includes the QAAP:
+#   Which evidently includes the QAAP:
 #
 #       qaap-container-run QAAP ...
 #
@@ -31,15 +30,6 @@
 #   Note the ${VAR:-default} syntax means that these variables can be
 #   overridden from the invoking shell.
 #
-# QAAP_DB_DIR
-# - Must be set to the root directory of the QAAP databases.  These are
-#   used when running FastQ-Screen and/or KneadData.
-# - If some databases are located elsewhere on your filesystem, and you don't
-#   want to keep two copies, simply 'mount them in' by adding to the docker
-#   run command below: '-v /my/path/to/somedb:/databases/somedb:ro'
-# - Default is the path used on the KCRI cluster.
-QAAP_DB_DIR="${QAAP_DB_DIR:-"/hpc/data/genomics/qaap"}"
-#
 # QAAP_IMAGE
 # - Needs changing only if (by default) you want to run a different tag
 # - Recommended to do in a mixed development & production environment:
@@ -47,12 +37,17 @@ QAAP_DB_DIR="${QAAP_DB_DIR:-"/hpc/data/genomics/qaap"}"
 # The default is the 'latest' (development) build on this machine.
 QAAP_IMAGE="${QAAP_IMAGE:-"kcri-qaap:latest"}"
 
+# QAAP_SCREEN_DBS
+# - Can be set to a comma-separated list of screening databases, to be
+#   the default for the --sc-d parameter (see ../README.md)
+# - These must be absolute paths prefixed by '/host' in order to be
+#   visible inside the container.
+B=/host/hpc/data/genomics/fastq-screen
+QAAP_SCREEN_DBS="${QAAP_SCREEN_DBS:-"$B/hg19,$B/univec,$B/contaminants,$B/phi_plus_snps"}"
+
 ### No changes needed beyond this point, but feel free to look ###
 
 err_exit() { echo "$(basename "$0"): $*" >&2; exit 1; }
-
-[ -d "$QAAP_DB_DIR" ] ||
-    err_exit "please set QAAP_DB_DIR to a valid directory: no such directory: $QAAP_DB_DIR"
 
 [ -n "$QAAP_IMAGE" ] && [ -n "$(docker image ls -q "$QAAP_IMAGE" 2>/dev/null)" ] ||
     err_exit "either docker is not running or QAAP_IMAGE ($QAAP_IMAGE) is incorrect"
@@ -68,7 +63,7 @@ err_exit() { echo "$(basename "$0"): $*" >&2; exit 1; }
 
 exec docker run -u "$(id -u):$(id -g)" $OPT_TI --rm --read-only \
    --tmpfs /run --tmpfs /tmp -v /:/host:ro \
-   -v "$QAAP_DB_DIR:/databases:ro" \
+   ${QAAP_SCREEN_DBS:+-e QAAP_SCREEN_DBS=$QAAP_SCREEN_DBS} \
    -v "${QAAP_WORK_DIR:-$PWD}:/workdir" \
    -w /workdir \
    $INTERACTIVE \

@@ -95,25 +95,26 @@ class QAAPBlackboard(Blackboard):
         os.makedirs(path, exist_ok = True)
         return path
 
-    def put_db_root(self, path):
-        '''Stores the QAAP services database root.'''
-        self.put_user_input('db_root', path)
-
-    def get_db_root(self):
-        '''Retrieve the user_input/db_root.'''
-        db_root = self.get_user_input('db_root')
-        if not db_root:
-            raise Exception("database root path (--db-root) is not set")
-        elif not os.path.isdir(db_root):
-            raise Exception("database root path is not a directory: %s" % db_root)
-        return os.path.abspath(db_root)
-
     def put_reference_path(self, path):
         '''Stores the path to the user provided reference genome.'''
         self.put_user_input('reference', path)
 
     def get_reference_path(self, default=None):
         return self.get_user_input('reference', default)
+
+    def put_screening_dbs(self, dic):
+        '''Store dict of name -> path for screening databases.'''
+        self.put_user_input('screening_dbs', dic)
+
+    def get_screening_dbs(self, default=None):
+        return self.get_user_input('screening_dbs', default)
+
+    def put_cleaning_dbs(self, lst):
+        '''Store list of paths to cleaning databases.'''
+        self.put_user_input('cleaning_dbs', lst)
+
+    def get_cleaning_dbs(self, default=None):
+        return self.get_user_input('cleaning_dbs', default)
 
     def put_platform(self, platform):
         return self.put_user_input('platform', platform.value)
@@ -144,7 +145,7 @@ class QAAPBlackboard(Blackboard):
         if not bn:
             fn = '/usr/src/ext/trimmomatic/adapters/default-%s.fa' % which
         else:
-            fn = '%s/trimmomatic/%s-%s.fa' % (self.get_db_root(), bn, which)
+            fn = '%s-%s.fa' % (bn, which)
         if not os.path.isfile(fn):
             raise Exception("trimmomatic adapter file not found: %s" % fn)
         return fn

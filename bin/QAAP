@@ -52,8 +52,7 @@ err_exit() { echo "$(basename "$0"): $*"; exit 1; }
 append_arg() { CMD_LINE="$CMD_LINE '$1'"; }
 
 # Parse and store all arguments until we hit the FILES, but intercept the
-# reference and out-dir parameters for possible adjustment (and break on
-# -d/--db-root while we are at it.
+# reference, out-dir, sc-d, cl-d parameters for possible adjustment.
 
 unset OUT_DIR REF_FILE
 while [ $# -ge 1 ]; do
@@ -62,7 +61,10 @@ while [ $# -ge 1 ]; do
     -r|--ref*)     REF_FILE="$2"; shift 2 ;;
     --out-dir=*)   OUT_DIR="${1##--out-dir=}"; shift ;;
     -o|--out-dir)  OUT_DIR="$2"; shift 2 ;;
-    -d|--db-dir*)  err_exit "set QAAP_DB_DIR instead of parameter -d/--db-dir when dockerised" ;;
+    --sc-d=*)      SC_D="${1##--sc-d=}"; shift ;;
+    --sc-d)        SC_D="$2"; shift 2 ;;
+    --cl-d=*)      CL_D="${1##--sc-d=}"; shift ;;
+    --cl-d)        CL_D="$2"; shift 2 ;;
     --*=*|-h|--help|-v|--verbose|-m|--meta*|-a|--ampl*|-l|-s|--list-*)  # The currently known no-arg flags
         append_arg "$1"
         shift ;;
@@ -117,6 +119,46 @@ if [ -n "$REF_FILE" ]; then
     # Append to the command line
     append_arg "-r"
     append_arg "$F"
+fi
+
+# Handle the SC_D comma-separated list
+
+if [ -n "$SC_D" ]; then
+
+    ARG=""
+    # Parse the comma separated list into a sequence of lines
+    echo "$SC_D" | tr ',' '\n' | sed -Ee 's/^ *//;s/ *$//' | while read DB; do
+
+        # Set F to absolute path to DB unless beneath WORK_DIR
+        F="$(realpath --relative-base="${QAAP_WORK_DIR:-$PWD}" "$DB" 2>/dev/null || true)"
+        [ -n "${F##/*}" ] || F="/host$F"
+
+        # Append the corrected path to ARG
+        ARG="${ARG}${ARG:+,}$F"
+    done
+
+    append_arg "--sc-d"
+    append_arg "$ARG"
+fi
+
+# Handle the CL_D comma-separated list
+
+if [ -n "$CL_D" ]; then
+
+    ARG=""
+    # Parse the comma separated list into a sequence of lines
+    echo "$SC_D" | tr ',' '\n' | sed -Ee 's/^ *//;s/ *$//' | while read DB; do
+
+        # Set F to absolute path to DB unless beneath WORK_DIR
+        F="$(realpath --relative-base="${QAAP_WORK_DIR:-$PWD}" "$DB" 2>/dev/null || true)"
+        [ -n "${F##/*}" ] || F="/host$F"
+
+        # Append the corrected path to ARG
+        ARG="${ARG}${ARG:+,}$F"
+    done
+
+    append_arg "--cl-d"
+    append_arg "$ARG"
 fi
 
 # Now handle the input FILES

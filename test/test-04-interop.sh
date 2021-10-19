@@ -5,8 +5,6 @@ LC_ALL="C"
 BASE_NAME="$(basename "$0" .sh)"
 BASE_DIR="$(realpath "$(dirname "$0")")"
 
-export QAAP_DB_DIR="$BASE_DIR/databases"
-
 . "$BASE_DIR/functions.sh"
 
 # Pick a directory that works for you here

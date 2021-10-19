@@ -127,13 +127,6 @@ class ServiceExecution(Task):
         '''Return True if the run was requested to be verbose.'''
         return self.get_user_input('verbose', False)
 
-    def get_db_path(self, db_name, default=None):
-        '''Return the path to db_name under db_root, fail if not a dir.'''
-        db_path = os.path.join(self._blackboard.get_db_root(), db_name)
-        if not os.path.isdir(db_path):
-            raise UserException("database path not found: %s", db_path)
-        return db_path
-
     def get_user_input(self, param, default=None):
         '''Return the user-provided value for param, fail if no default provided.'''
         ret = self._blackboard.get_user_input(param, default)
@@ -227,12 +220,25 @@ class ServiceExecution(Task):
         return ret if ret else default
 
     def get_reference_path(self, default=None):
-        '''Return path to FASTA with the user provided reference or else the established one, or else default.'''
+        '''Return path to FASTA with the user provided reference, or else default.'''
         ret = self._blackboard.get_reference_path(default)
         if ret is None:
             raise UserException("no reference was specified")
         return ret
 
+    def get_screening_dbs(self, default=None):
+        '''Return dict of name -> path for the screening databases, fall back to default, else user exception.'''
+        ret = self._blackboard.get_screening_dbs(default)
+        if ret is None:
+            raise UserException("no screening databases were specified")
+        return ret
+
+    def get_cleaning_dbs(self, default=None):
+        '''Return list of paths to the cleaning databases, fall back to default, else user exception.'''
+        ret = self._blackboard.get_cleaning_dbs(default)
+        if ret is None:
+            raise UserException("no cleaning databases were specified")
+        return ret
 
 ### class MultiJobExecution
 #
