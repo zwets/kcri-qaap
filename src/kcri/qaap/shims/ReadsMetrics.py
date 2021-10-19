@@ -63,8 +63,10 @@ class ReadsMetricsExecution(MultiJobExecution):
                 cmd = "(gzip -dc '%s' 2>/dev/null || cat '%s') | fastq-stats" % (fpath,fpath) 
                 job_spec = JobSpec('sh', [ '-c', cmd, 'fastq-stats' ], MAX_CPU, MAX_MEM, MAX_TIM)
 
-                # We add the fid as userdata, so we can use it in collect_output
-                self.store_job_spec(job_spec.as_dict())
+                # Don't log the job spec, fastq-stats is trivial enough
+                #self.put_job_spec(job_spec.as_dict())
+
+                # Add the fid as userdata, so we can use it in collect_output
                 self.add_job('fastq-stats-%s' % fid, job_spec, '%s/%s' % (self.sid, fid), fid)
 
     @staticmethod
