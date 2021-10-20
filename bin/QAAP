@@ -121,44 +121,34 @@ if [ -n "$REF_FILE" ]; then
     append_arg "$F"
 fi
 
+# Function to process a list of file paths, prepending all with /host if needed
+
+abs_list() {
+    local P F C=""
+
+    echo "$1" | tr ',' '\n' | sed -Ee 's/^ *//;s/ *$//;s@^~@'$HOME'@' | while read P; do
+
+        F="$(realpath --relative-base="${QAAP_WORK_DIR:-$PWD}" "$P" 2>/dev/null)" ||
+            err_exit "cannot make path relative: $P"
+        [ -n "${F##/*}" ] || F="/host$F"
+
+        printf '%s%s' "$C" "$F"
+        C=','
+    done
+}
+
 # Handle the SC_D comma-separated list
 
 if [ -n "$SC_D" ]; then
-
-    ARG=""
-    # Parse the comma separated list into a sequence of lines
-    echo "$SC_D" | tr ',' '\n' | sed -Ee 's/^ *//;s/ *$//' | while read DB; do
-
-        # Set F to absolute path to DB unless beneath WORK_DIR
-        F="$(realpath --relative-base="${QAAP_WORK_DIR:-$PWD}" "$DB" 2>/dev/null || true)"
-        [ -n "${F##/*}" ] || F="/host$F"
-
-        # Append the corrected path to ARG
-        ARG="${ARG}${ARG:+,}$F"
-    done
-
     append_arg "--sc-d"
-    append_arg "$ARG"
+    append_arg "$(abs_list "$SC_D")"
 fi
 
 # Handle the CL_D comma-separated list
 
 if [ -n "$CL_D" ]; then
-
-    ARG=""
-    # Parse the comma separated list into a sequence of lines
-    echo "$SC_D" | tr ',' '\n' | sed -Ee 's/^ *//;s/ *$//' | while read DB; do
-
-        # Set F to absolute path to DB unless beneath WORK_DIR
-        F="$(realpath --relative-base="${QAAP_WORK_DIR:-$PWD}" "$DB" 2>/dev/null || true)"
-        [ -n "${F##/*}" ] || F="/host$F"
-
-        # Append the corrected path to ARG
-        ARG="${ARG}${ARG:+,}$F"
-    done
-
     append_arg "--cl-d"
-    append_arg "$ARG"
+    append_arg "$(abs_list "$CL_D")"
 fi
 
 # Now handle the input FILES

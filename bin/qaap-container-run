@@ -43,7 +43,7 @@ QAAP_IMAGE="${QAAP_IMAGE:-"kcri-qaap:latest"}"
 # - These must be absolute paths prefixed by '/host' in order to be
 #   visible inside the container.
 B=/host/hpc/data/genomics/screen-dbs
-QAAP_SCREEN_DBS="${QAAP_SCREEN_DBS:-"$B/hg19,$B/univec,$B/contaminants,$B/phi_plus_snps"}"
+QAAP_SCREEN_DBS="${QAAP_SCREEN_DBS:-"$B/hg37dec_v0.1,$B/univec,$B/contaminants,$B/phi_plus_snps"}"
 
 ### No changes needed beyond this point, but feel free to look ###
 

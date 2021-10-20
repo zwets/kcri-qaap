@@ -24,17 +24,18 @@ WORKDIR /usr/src
 #RUN cd ext/picoline && python3 setup.py install && cd .. && rm -rf picoline
 #COPY ext/fastq-utils ext/fastq-utils
 #RUN cd ext/fastq-utils && make clean && make fastq-stats && cp fastq-stats /usr/local/bin/ && cd .. && rm -rf fastq-utils
-COPY ext/kneaddata ext/kneaddata
-RUN cd ext/kneaddata && python setup.py install --bypass-dependencies-install && rm -rf build
+#COPY ext/kneaddata ext/kneaddata
+#RUN cd ext/kneaddata && python setup.py install --bypass-dependencies-install && rm -rf build
 
 # KCRI QAAP package
 #COPY src/kcri/qaap/__init__.py kcri/qaap/
 #COPY src/kcri/qaap/QAAP.py kcri/qaap/
 #COPY src/kcri/qaap/data.py kcri/qaap/
 #COPY src/kcri/qaap/services.py kcri/qaap/
-#COPY src/kcri/qaap/shims/SKESA.py kcri/qaap/shims/
-#COPY src ./
-#RUN python3 setup.py install
+COPY src/kcri/qaap/shims/KneadData.py kcri/qaap/shims/
+COPY src/kcri/qaap/filescan.py kcri/qaap/
+COPY src ./
+RUN python3 setup.py install
 
 # Drop down to the original user and workdir
 USER nobody:nogroup

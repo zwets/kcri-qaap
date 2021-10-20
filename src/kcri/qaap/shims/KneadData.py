@@ -82,9 +82,9 @@ class KneadDataExecution(MultiJobExecution):
 
         params = [ '-i1', fq1, '-i2', fq2, '--output-prefix', fid, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
         if not self._blackboard.get_user_input('cl_t', False): params.append('--bypass-trf')
-        for db in dbs: params += [ '-db', db ]
+        for db in dbs: params += [ '-db', os.path.abspath(db) ]
 
-           #'--fastqc', 'fastqc', '--trf', 'trf', '--run-trim-repetitive' ]
+          #'--fastqc', 'fastqc', '--trf', 'trf', '--run-trim-repetitive' ]
           #--output-prefix OUTPUT_PREFIX
           #--run-fastqc-start
           #--run-fastqc-end
@@ -122,7 +122,7 @@ class KneadDataExecution(MultiJobExecution):
 
         params = [ '-un', fq, '--output-prefix', fid, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
         if not self._blackboard.get_user_input('cl_t', False): params.append('--bypass-trf')
-        for db in dbs: params += [ '-db', db ]
+        for db in dbs: params += [ '-db', os.path.abspath(db) ]
 
         job_spec = JobSpec('kneaddata', params, cpu, mem, 10*60)
         self.add_job_spec('se/%s' % fid, job_spec.as_dict())

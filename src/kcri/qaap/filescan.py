@@ -169,5 +169,5 @@ def check_screen_db(path):
     ix = fn + '.1.bt2'
     if not os.path.isfile(ix):
         err_exit('invalid screening/cleaning database: no index found: %s (did you bowtie2-build it?)' % ix)
-    return os.path.basename(fn), fn
+    return os.path.basename(fn), os.path.abspath(fn)
 

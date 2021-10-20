@@ -1,6 +1,9 @@
 /test/output
-/tmp
+/test/databases
+!/test/database/README.md
 *.pyc
 *.pyo
 *~
 *.log
+*.bt2
+/src/pico

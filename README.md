@@ -92,12 +92,23 @@ Smoke test the container
     # Run 'QAAP --help' in the container, using the bin/QAAP wrapper.
     bin/QAAP --help
 
-Run on test data:
+Default run on test data:
 
-    # Test run QAAP on an assembled sample genome
+    # Test run QAAP on sample data
     test/test-01-fq.sh
 
-If the tests above end with with `[OK]`, you are good to go.
+Running further tests in directory `./test` requires the "Univec"
+contaminant database (more info below):
+
+    # Download the Univec database
+    wget -O test/databases/univec.fna ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec
+
+    # Index the Univec database
+    bin/qaap bowtie2-build test/databases/univec.fna test/databases/univec 
+
+Now you can run further tests:
+
+    test/run-tests.sh  # to run the various test-*.sh
 
 ### Installation - screen & clean databases
 
@@ -109,7 +120,7 @@ These can be created from FASTA files using bowtie2-build:
 The `/path/to/basename`s can then be passed as comma-separated lists in
 the `--sc-d` parameter, or through the `QAAP_SCREEN_DBS` environment variable.
 
-By default the databases are used for screening and cleaning.  If you want
+By default the screening databases are also used for cleaning.  If you want
 different databases for cleaning, specify these with the `--cl-d` parameter.
 
 It may be convenient to set a default list of screening/cleaning databases
