@@ -83,98 +83,113 @@ RUN pip install \
 # Install External Deps
 #----------------------------------------------------------------------
 
-# Installation root
-RUN mkdir -p /usr/src
-WORKDIR /usr/src
+# Installation root for externals
+RUN mkdir -p /usr/src/ext
+WORKDIR /usr/src/ext
 
-# Copy the externals to /usr/src/ext
-# Note the .dockerignore filters out a lot
-COPY ext ext
+# Note in the below COPY directives the .dockerignore filters out a lot.
+# We don't copy all at the same time to reduce build time on changes.
+#COPY ext ./
 
-# Install BLAST by putting its binaries on the PATH,
-# and prevent 2.11.0 phone home bug by opting out
-# https://github.com/ncbi/blast_plus_docs/issues/15
-ENV PATH=/usr/src/ext/ncbi-blast/bin:$PATH \
-    BLAST_USAGE_REPORT=false
+# Install spades
+COPY ext/spades spades
+RUN cd spades && \
+    bin/spades.py --test && \
+    rm -rf spades_test
+ENV PATH=/usr/src/ext/spades/bin:$PATH
 
-# Install uf and uf-stats by putting them on the PATH.
-ENV PATH=/usr/src/ext/unfasta:$PATH
+# Install spades-uni (old version for Unicycler, pass with --spades_path)
+COPY ext/spades-uni spades-uni
+RUN cd spades-uni && \
+    bin/spades.py --test && \
+    rm -rf spades_test
+
+# Install pilon (for unicycler)
+COPY ext/pilon pilon
+RUN printf '#!/bin/sh\nexec java -Xmx16G -jar /usr/src/ext/pilon/pilon.jar "$@"\n' \
+    > /usr/local/bin/pilon && \
+    chmod +x /usr/local/bin/pilon
+
+# Install unicycler
+COPY ext/unicycler unicycler
+RUN cd unicycler && \
+    python setup.py install && \
+    rm -rf build
 
 # Make and install skesa
-RUN cd ext/skesa && \
+COPY ext/skesa skesa
+RUN cd skesa && \
     make clean && make -f Makefile.nongs && \
     cp skesa /usr/local/bin/ && \
     cd .. && rm -rf skesa
 
+# Install multiqc
+COPY ext/multiqc multiqc
+RUN cd multiqc && \
+    python setup.py install && \
+    rm -rf build
+
 # Install fastq-stats
-RUN cd ext/fastq-utils && \
+COPY ext/fastq-utils fastq-utils
+RUN cd fastq-utils && \
     make clean && make fastq-stats && \
     cp fastq-stats /usr/local/bin/ && \
     cd .. && rm -rf fastq-utils
 
 # Install fastqc by symlinking
-RUN cd ext/fastqc && \
+COPY ext/fastqc fastqc
+RUN cd fastqc && \
     chmod +x fastqc && \
     ln -sft /usr/local/bin /usr/src/ext/fastqc/fastqc
 
-# Install trim_galore by copying it to /usr/local/bin
-RUN mv ext/trim-galore/trim_galore /usr/local/bin
-
 # Install trimmomatic (the weird awk is to force eol on last line of fa)
-RUN cd ext/trimmomatic && \
+COPY ext/trimmomatic trimmomatic
+RUN cd trimmomatic && \
     awk 1 adapters/NexteraPE-PE.fa adapters/TruSeq3-PE-2.fa >adapters/default-PE.fa && \
     printf '#!/bin/sh\nexec java -jar /usr/src/ext/trimmomatic/%s "$@"\n' $(ls *.jar) \
     > /usr/local/bin/trimmomatic && \
     chmod +x /usr/local/bin/trimmomatic
 
 # Install fastq-screen by adding it to the PATH
+COPY ext/fastq-screen fastq-screen
 ENV PATH=/usr/src/ext/fastq-screen:$PATH
 
-# Install spades
-RUN cd ext/spades && \
-    bin/spades.py --test && \
-    rm -rf spades_test
-ENV PATH=/usr/src/ext/spades/bin:$PATH
+# Install BLAST by putting its binaries on the PATH,
+# and prevent 2.11.0 phone home bug by opting out
+# https://github.com/ncbi/blast_plus_docs/issues/15
+COPY ext/ncbi-blast ncbi-blast
+ENV PATH=/usr/src/ext/ncbi-blast/bin:$PATH \
+    BLAST_USAGE_REPORT=false
 
-# Install spades-uni (old version for Unicycler, pass with --spades_path)
-RUN cd ext/spades-uni && \
-    bin/spades.py --test && \
-    rm -rf spades_test
-
-# Install pilon (for unicycler)
-RUN printf '#!/bin/sh\nexec java -Xmx16G -jar /usr/src/ext/pilon/pilon.jar "$@"\n' \
-    > /usr/local/bin/pilon && \
-    chmod +x /usr/local/bin/pilon
-
-# Install unicycler
-RUN cd ext/unicycler && \
-    python setup.py install && \
-    rm -rf build
+# Install uf and uf-stats by putting them on the PATH.
+COPY ext/unfasta unfasta
+ENV PATH=/usr/src/ext/unfasta:$PATH
 
 # Install the picoline module
-RUN cd ext/picoline && \
+COPY ext/picoline picoline
+RUN cd picoline && \
     python3 setup.py install && \
     cd .. && rm -rf picoline
 
 # Install the Illumina interop tools (MultiQC parses these)
-RUN cd ext/interop && \
-    cp bin/summary /usr/local/bin/interop_summary && \
-    cp bin/index-summary /usr/local/bin/interop_index-summary && \
-    cd .. && rm -rf interop
+COPY ext/interop/bin/summary /usr/local/bin/interop_summary
+COPY ext/interop/bin/index-summary /usr/local/bin/interop_index-summary
 
-# Install multiqc
-RUN cd ext/multiqc && \
-    python setup.py install && \
-    rm -rf build
+# Install trim_galore by copying it to /usr/local/bin
+COPY ext/trim-galore/trim_galore /usr/local/bin/
 
 # Install kneaddata (from github.com/zwets master until fixes in upstream)
-RUN cd ext/kneaddata && \
+COPY ext/kneaddata kneaddata
+RUN cd kneaddata && \
     python setup.py install --bypass-dependencies-install && \
     rm -rf build
 
 
 # Install the QAAP code
 #----------------------------------------------------------------------
+
+# Installation root for our code
+WORKDIR /usr/src
 
 # Copy contents of src into /usr/src
 COPY src ./

@@ -102,7 +102,7 @@ per line, in a text file and pass this file with @FILENAME.
     group.add_argument('--tr-a', metavar='NAME', default=None, help="base name of the Trimmomatic adapter file [default]")
 
     group = parser.add_argument_group('Screening parameters')
-    group.add_argument('--sc-d', metavar='PATHS', default=None, help="comma-separated list of databases for screening, default is value of QAAP_SCREEN_DBS)")
+    group.add_argument('--sc-d', metavar='PATHS', default=os.getenv('QAAP_SCREEN_DBS'), help="comma-separated list of databases for screening, default is value of QAAP_SCREEN_DBS)")
 
     group = parser.add_argument_group('Cleaning parameters')
     group.add_argument('--cl-d', metavar='PATHS', default=None, help="comma-separated list of databases for cleaning, if different of those for screening")
@@ -189,9 +189,8 @@ per line, in a text file and pass this file with @FILENAME.
         reference = os.path.abspath(args.reference)
 
     # Parse the screening / cleaning databases
-    dbs = args.sc_d if args.sc_d else os.getenv('QAAP_SCREEN_DBS')
-    screen_dbs = dict(map(check_screen_db, dbs.split(',')) if dbs else list())
-    clean_dbs = list(dict(map(check_screen_db, args.cl_d.split(','))) if args.cl_d else screen_dbs.values())
+    screen_dbs = dict(map(check_screen_db, args.sc_d.split(',') if args.sc_d else list()))
+    clean_dbs = list((dict(map(check_screen_db, args.cl_d.split(','))) if args.cl_d else screen_dbs).values())
 
     # Parse the --list options
     if args.list_targets:
