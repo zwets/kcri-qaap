@@ -80,10 +80,11 @@ class KneadDataExecution(MultiJobExecution):
 
     def schedule_pe_job(self, fid, fq1, fq2, dbs, cpu, mem):
 
-        params = [ '-i1', fq1, '-i2', fq2, '--output-prefix', fid, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim', '--bypass-trf' ]
-               #'--fastqc', 'fastqc', '--trf', 'trf', '--run-trim-repetitive' ]
+        params = [ '-i1', fq1, '-i2', fq2, '--output-prefix', fid, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
+        if not self._blackboard.get_user_input('cl_t', False): params.append('--bypass-trf')
         for db in dbs: params += [ '-db', db ]
 
+           #'--fastqc', 'fastqc', '--trf', 'trf', '--run-trim-repetitive' ]
           #--output-prefix OUTPUT_PREFIX
           #--run-fastqc-start
           #--run-fastqc-end
@@ -119,7 +120,8 @@ class KneadDataExecution(MultiJobExecution):
 
     def schedule_se_job(self, fid, fq, dbs, cpu, mem):
 
-        params = [ '-un', fq, '--output-prefix', fid, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim', '--bypass-trf' ]
+        params = [ '-un', fq, '--output-prefix', fid, '-o', '.', '-t', cpu, '--max-memory', '%.1fG' % mem, '--bypass-trim' ]
+        if not self._blackboard.get_user_input('cl_t', False): params.append('--bypass-trf')
         for db in dbs: params += [ '-db', db ]
 
         job_spec = JobSpec('kneaddata', params, cpu, mem, 10*60)

@@ -106,6 +106,7 @@ per line, in a text file and pass this file with @FILENAME.
 
     group = parser.add_argument_group('Cleaning parameters')
     group.add_argument('--cl-d', metavar='PATHS', default=None, help="comma-separated list of databases for cleaning, if different of those for screening")
+    group.add_argument('--cl-t', action='store_true', help="enable the tandem repeat filter for cleaning (default off)")
 
     group = parser.add_argument_group('Quast parameters')
     group.add_argument('--qu-t', type=int, metavar='LEN', default=500, help="threshold contig length for Quast (500)")
