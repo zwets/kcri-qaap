@@ -42,8 +42,13 @@ QAAP_IMAGE="${QAAP_IMAGE:-"kcri-qaap:latest"}"
 #   the default for the --sc-d parameter (see ../README.md)
 # - These must be absolute paths prefixed by '/host' in order to be
 #   visible inside the container.
-B=/host/hpc/data/genomics/screen-dbs
-QAAP_SCREEN_DBS="${QAAP_SCREEN_DBS:-"$B/hg37dec_v0.1,$B/univec,$B/contaminants,$B/phi_plus_snps"}"
+# - Here we create a default list using the default KCRI HPC location
+B=/hpc/data/genomics/screen-dbs
+if [ -z "$QAAP_SCREEN_DBS" ]; then
+    for DB in GRCh38.p13 hg19 univec contaminants phi_plus_snps; do
+        [ ! -f "$B/$DB.1.bt2" ] || QAAP_SCREEN_DBS="${QAAP_SCREEN_DBS}${QAAP_SCREEN_DBS:+,}/host$B/${DB}"
+    done
+fi
 
 ### No changes needed beyond this point, but feel free to look ###
 

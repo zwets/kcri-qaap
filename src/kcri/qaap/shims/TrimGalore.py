@@ -80,8 +80,8 @@ class TrimGaloreExecution(MultiJobExecution):
 
         params = [ '--paired', '--retain_unpaired', '--dont_gzip', '--cores', cores,
             '--nextseq' if self._blackboard.is_nextseq() else '--quality', self.min_q,
-            '--length', self.min_l, 
-            '--stringency', self.min_o,
+            '--length', self.min_l, '--length_1', self.min_l+1, '--length_2', self.min_l+1,
+            '--stringency', self.min_o, '--trim-n', '--basename', fid,
             fq1, fq2 ]
 
         job_spec = JobSpec('trim_galore', params, cpu, mem, 5*60)
@@ -92,8 +92,7 @@ class TrimGaloreExecution(MultiJobExecution):
 
         params = [ '--dont_gzip', '--cores', cores,
             '--nextseq' if self._blackboard.is_nextseq() else '--quality', self.min_q,
-            '--length', self.min_l, 
-            '--stringency', self.min_o,
+            '--length', self.min_l, '--stringency', self.min_o, '--trim-n', '--basename', fid,
             fq ]
 
         job_spec = JobSpec('trim_galore', params, cpu, mem, 5*60)
@@ -112,8 +111,8 @@ class TrimGaloreExecution(MultiJobExecution):
         if is_pe:
             check_file = lambda f: None if not os.path.exists(f) or os.stat(f).st_size == 0 else f
             fastqs = (
-                    job.file_path(fid + '_R1_val_1.fq'),
-                    job.file_path(fid + '_R2_val_2.fq'),
+                    job.file_path(fid + '_val_1.fq'),
+                    job.file_path(fid + '_val_2.fq'),
                     check_file(job.file_path(fid + '_R1_unpaired_1.fq')),
                     check_file(job.file_path(fid + '_R2_unpaired_2.fq')) )
             res['fastqs'] = fastqs

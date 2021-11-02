@@ -102,7 +102,7 @@ per line, in a text file and pass this file with @FILENAME.
     group.add_argument('--tr-a', metavar='NAME', default=None, help="base name of the Trimmomatic adapter file [default]")
 
     group = parser.add_argument_group('Screening parameters')
-    group.add_argument('--sc-d', metavar='PATHS', default=os.getenv('QAAP_SCREEN_DBS'), help="comma-separated list of databases for screening, default is value of QAAP_SCREEN_DBS)")
+    group.add_argument('--sc-d', metavar='PATHS', default=os.getenv('QAAP_SCREEN_DBS'), help="comma-separated list of databases for screening (default: value of QAAP_SCREEN_DBS [%s])" % os.getenv('QAAP_SCREEN_DBS'))
 
     group = parser.add_argument_group('Cleaning parameters')
     group.add_argument('--cl-d', metavar='PATHS', default=None, help="comma-separated list of databases for cleaning, if different of those for screening")
