@@ -65,7 +65,7 @@ while [ $# -ge 1 ]; do
     --sc-d)        SC_D="$2"; shift 2 ;;
     --cl-d=*)      CL_D="${1##--sc-d=}"; shift ;;
     --cl-d)        CL_D="$2"; shift 2 ;;
-    --*=*|-h|--help|-v|--verbose|-m|--meta*|-a|--ampl*|--cl-t|-l|-s|--list-*)  # The currently known no-arg flags
+    --*=*|-h|--help|-v|--verbose|-m|--meta*|-a|--ampl*|--no-trim|--cl-t|-l|-s|--list-*)  # The currently known no-arg flags
         append_arg "$1"
         shift ;;
     -*)                                  # Assume all the rest come with arg

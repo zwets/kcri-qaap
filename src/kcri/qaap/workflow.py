@@ -32,6 +32,7 @@ class Params(pico.workflow.logic.Params):
     READS = 'reads'             # User has provided fastq files
     FASTA = 'fasta'             # User has provided fasta files
     META = 'meta'               # All data is metagenomic
+    NO_TRIM = 'no-trim'         # User wants no trimming
     ILLUM_RUN = 'illum-run'     # We are analysing a full MiSeq run (miseq_run_dir)
     ILLUM_READS = 'illum-reads' # All reads are Illumina reads
 
@@ -132,7 +133,7 @@ DEPENDENCIES = {
     Services.FASTQC:	            Params.READS,
     Services.FASTQSCREEN:	        Params.READS,
     Services.INTEROP:	            Params.ILLUM_RUN,
-    Services.KNEADDATA:             ALL( Params.META, Checkpoints.TRIMMED_READS ),
+    Services.KNEADDATA:             ALL( Params.META, ONE( Params.NO_TRIM, Checkpoints.TRIMMED_READS ) ),
     Services.MULTIQC:	            ALL(), # No dependencies
     Services.QUAST:	                OIF( Checkpoints.CONTIGS ),
     Services.TRIMMED_FASTQC:	    OIF( Checkpoints.TRIMMED_READS ),

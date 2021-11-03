@@ -131,6 +131,9 @@ class QAAPBlackboard(Blackboard):
     def is_amplicon(self):
         return self.get_user_input('amplicon', False)
 
+    def is_no_trim(self):
+        return self.get_user_input('no_trim', False)
+
     def get_trim_min_q(self):
         return self.get_user_input('tr_q', 20 if self.is_metagenomic() else 10)
 

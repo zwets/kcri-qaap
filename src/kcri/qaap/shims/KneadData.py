@@ -26,12 +26,12 @@ class KneadDataShim:
             pe_fqs = dict()
             se_fqs = dict()
 
-            for k, (r1,r2,u1,u2) in blackboard.get_trimmed_pe_quads(dict()).items():
+            for k, (r1,r2,u1,u2) in task.get_trimmed_quads(dict()).items():
                 pe_fqs[k] = (os.path.abspath(r1),os.path.abspath(r2))
                 if u1: se_fqs[k+'_U1'] = os.path.abspath(u1)
                 if u2: se_fqs[k+'_U2'] = os.path.abspath(u2)
 
-            for k, fq in blackboard.get_trimmed_se_fqs(dict()).items():
+            for k, fq in task.get_trimmed_singles(dict()).items():
                 se_fqs[k] = os.path.abspath(fq)
 
             if not pe_fqs and not se_fqs:

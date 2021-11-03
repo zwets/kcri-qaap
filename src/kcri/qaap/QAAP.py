@@ -96,6 +96,7 @@ per line, in a text file and pass this file with @FILENAME.
 
     # Service specific arguments
     group = parser.add_argument_group('Trimming parameters')
+    group.add_argument('--no-trim', action='store_true', help="do not perform trimming")
     group.add_argument('--tr-q', type=int, metavar='Q', default=None, help="cut-off Q score (default: 10 regular, 20 metagenomic)")
     group.add_argument('--tr-l', type=int, metavar='LEN', default=None, help="minimum read length to keep (default: 36 regular, 48 metagenomic)")
     group.add_argument('--tr-o', type=int, metavar='BASES', default=None, help="minimum adapter overlap to trim (default: 5 regular, 6 metagenomic)")
@@ -221,6 +222,8 @@ per line, in a text file and pass this file with @FILENAME.
     params = list()
     if args.meta:
         params.append(Params.META)
+    if args.no_trim:
+        params.append(Params.NO_TRIM)
     if illumina_run_dir:
         params.append(Params.ILLUM_RUN)
     if il_fqs:

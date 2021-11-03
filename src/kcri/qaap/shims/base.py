@@ -184,15 +184,35 @@ class ServiceExecution(Task):
             raise UserException("no single end fastq files were provided")
         return ret if ret else default
 
+    def get_trimmed_quads(self, default=None):
+        '''Return dict with trimmed quads, or input fastqs if no-trim.'''
+        if self._blackboard.is_no_trim():
+            ret = dict([(k,(fq1,fq2,None,None)) for (k,(fq1,fq2)) in self.get_input_pairs(dict()).items()])
+        else:
+            ret = dict(self._blackboard.get_trimmed_pe_quads(dict()))
+        if not ret and default is None:
+            raise UserException("no fastq pairs were trimmed")
+        return ret if ret else default
+
+    def get_trimmed_singles(self, default=None):
+        '''Return dict with trimmed singles, or input singles if no-trim.'''
+        if self._blackboard.is_no_trim():
+            ret = dict(self.get_input_singles(dict()))
+        else:
+            ret = dict(self._blackboard.get_trimmed_se_fastqs(dict()))
+        if not ret and default is None:
+            raise UserException("no fastq singles were trimmed")
+        return ret if ret else default
+
     def get_trimmed_fastqs(self, default=None):
         '''Analog of get_input_fastqs for trimmed fastqs, renames the identifiers.'''
         ret = dict()
-        for k,(r1,r2,u1,u2) in self._blackboard.get_trimmed_pe_quads(dict()).items():
+        for k,(r1,r2,u1,u2) in self.get_trimmed_quads(dict()).items():
             ret['%s_trimmed_R1' % k] = os.path.abspath(r1)
             ret['%s_trimmed_R2' % k] = os.path.abspath(r2)
             if u1: ret['%s_trimmed_U1' % k] = os.path.abspath(u1)
             if u2: ret['%s_trimmed_U2' % k] = os.path.abspath(u2)
-        for k,fq in self._blackboard.get_trimmed_se_fqs(dict()).items():
+        for k,fq in self.get_trimmed_singles(dict()).items():
             ret['%s_trimmed' % k] = os.path.abspath(fq)
         if not ret and default is None:
             raise UserException("no trimmed fastq files were produced")
