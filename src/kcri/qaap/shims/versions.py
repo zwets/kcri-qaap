@@ -5,9 +5,10 @@
 #
 DEPS_VERSIONS = dict()
 DEPS_VERSIONS["alga"] = "1.0.3-2-gc699"
+DEPS_VERSIONS["fastp"] = "v0.23.1-2-ge2df"
 DEPS_VERSIONS["fastq-utils"] = "1.2.0"
 DEPS_VERSIONS["kneaddata"] = "0.10.0-21-g16fe"
-DEPS_VERSIONS["multiqc"] = "v1.11-17-g730ac"
+DEPS_VERSIONS["multiqc"] = "v1.11-176-g947e"
 DEPS_VERSIONS["picoline"] = "1.4.0"
 DEPS_VERSIONS["skesa"] = "skesa.2.4.0_saute.1.3.0_1-3-gfa9e"
 DEPS_VERSIONS["trim-galore"] = "0.6.7-4-g1a12"

@@ -139,6 +139,9 @@ class KneadDataExecution(MultiJobExecution):
 
         nonz_file = lambda f: f if os.path.isfile(f) and os.path.getsize(f) != 0 else None
 
+        # TODO: undo the KneadData mangling of the Illumina fastq headers
+        # sed -i -Ee 's,^(@.*)(:N:0:20)#0/(.)$,\1 \3\2,' path-to-fastq
+
         if is_pe:
             fqs = ( nonz_file(job.file_path(fid + '_paired_1.fastq')),
                     nonz_file(job.file_path(fid + '_paired_2.fastq')),

@@ -21,6 +21,7 @@ FROM continuumio/miniconda3:4.10.3p0
 # - default-jre for FastQC and Trimmomatic (and the mkdir for it)
 # - bowtie2, samtools, gd-graph for FastQ-Screen
 # - bowtie2, samtools, default-jre for pilon, for Unicycler
+# - libisal-dev, libdeflate-dev for fastp
 # - pigz for trim-galore
 # - cmake for alga
 
@@ -33,6 +34,7 @@ RUN apt-get -qq update --fix-missing && \
         make g++ libz-dev pigz \
         default-jre-headless \
         gawk \
+        libdeflate-dev libisal-dev \
         libboost-program-options-dev \
         libboost-iostreams-dev \
         libboost-regex-dev \

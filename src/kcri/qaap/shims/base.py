@@ -199,7 +199,7 @@ class ServiceExecution(Task):
         if self._blackboard.is_no_trim():
             ret = dict(self.get_input_singles(dict()))
         else:
-            ret = dict(self._blackboard.get_trimmed_se_fastqs(dict()))
+            ret = dict(self._blackboard.get_trimmed_se_fqs(dict()))
         if not ret and default is None:
             raise UserException("no fastq singles were trimmed")
         return ret if ret else default

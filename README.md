@@ -9,9 +9,9 @@ pipeline for QC and assembly at Kilimanjaro Clinical Research Institute
 
 The QAAP orchestrates standard workflows for processing sequencing reads:
 
- * Reads QC (FastQC, FastQ-Screen, fastq-stats)
- * Trimming and cleaning (Trimmomatic, Trim Galore, KneadData)
- * Genome assembly (SKESA, SPAdes, Unicycler, alga)
+ * Reads QC (fastp, FastQC, FastQ-Screen, fastq-stats)
+ * Trimming and cleaning (fastp, Trimmomatic, Trim Galore, KneadData)
+ * Genome assembly (SKESA, SPAdes, Unicycler, Raven, alga(?))
  * Assembly QC (Quast, MetaQuast)
 
 The QAAP comes with sensible default settings and standard workflows for
