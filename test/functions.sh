@@ -26,8 +26,8 @@ check_output() {
 
     cd "$BASE_DIR"
 
-    REF_OUT="expect/$BASE_NAME/qaap-report.json"
-    RUN_OUT="output/latest/qaap-report.json"
+    REF_OUT="expect/$BASE_NAME/qaap-summary.tsv"
+    RUN_OUT="output/latest/qaap-summary.tsv"
 
     if diff "$REF_OUT" "$RUN_OUT"; then
         printf "[OK] Run output matches expected output\n\n"

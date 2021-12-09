@@ -264,11 +264,14 @@ per line, in a text file and pass this file with @FILENAME.
 
     # Write the qaap-summary.tsv (stub for now)
     with open('qaap-summary.tsv', 'w') as f_tsv:
-        atts = 'id', 'n_reads', 'nt_read', 'pct_q30', 'pct_gc' #, 'n_ctgs', 'nt_ctgs', 'n1', 'n50', 'l50'
-        print('\t'.join(atts), file=f_tsv)
-        for i, d in blackboard.get('services/ReadsMetrics/results', dict()).items():
-            print(i, end='\t', file=f_tsv)
-            print('\t'.join(map(lambda a: str(d.get(a, 'NA')), atts)), file=f_tsv)
+        atts = 'n_reads', 'n_bases', 'pct_q30', 'pct_gc', 'n_100k', \
+          'n_seqs', 'tot_len', 'n1', 'n50', 'n75', 'l50', 'l75', 'n_100k', 'pct_gc', 'ign_len', 'n_ign', 'len_ign', 'pct_ign'
+ 
+        print('#id\t' + '\t'.join(atts), file=f_tsv)
+        for r in 'services/ReadsMetrics/results', 'services/CleanReadsMetrics/results', 'services/ContigsMetrics/results':
+            for i, d in blackboard.get(r, dict()).items():
+                print(i, end='\t', file=f_tsv)
+                print('\t'.join(map(lambda a: str(d.get(a, 'NA')), atts)), file=f_tsv)
 
     # Done done
     return 0
