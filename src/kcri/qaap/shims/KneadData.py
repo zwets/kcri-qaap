@@ -124,7 +124,7 @@ class KneadDataExecution(MultiJobExecution):
         if not self._blackboard.get_user_input('cl_t', False): params.append('--bypass-trf')
         for db in dbs: params += [ '-db', os.path.abspath(db) ]
 
-        job_spec = JobSpec('kneaddata', params, cpu, mem, 10*60)
+        job_spec = JobSpec('kneaddata', params, cpu, mem, 60*60)
         self.add_job_spec('se/%s' % fid, job_spec.as_dict())
         self.add_job('kneaddata-se_%s' % fid, job_spec, '%s/se/%s' % (self.sid,fid), (False,fid))
 
