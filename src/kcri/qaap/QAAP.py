@@ -237,7 +237,7 @@ per line, in a text file and pass this file with @FILENAME.
         params.append(Params.READS)
         blackboard.put_input_se_fqs(se_fqs)
     if fastas:
-        params.append(Params.FASTAS)
+        params.append(Params.FASTA)
         blackboard.put_input_fastas(fastas)
     if screen_dbs:
         blackboard.put_screening_dbs(screen_dbs)
