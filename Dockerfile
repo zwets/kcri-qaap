@@ -100,18 +100,6 @@ RUN cd spades && \
     rm -rf spades_test
 ENV PATH=/usr/src/ext/spades/bin:$PATH
 
-# Install spades-uni (old version for Unicycler, pass with --spades_path)
-COPY ext/spades-uni spades-uni
-RUN cd spades-uni && \
-    bin/spades.py --test && \
-    rm -rf spades_test
-
-# Install pilon (for unicycler)
-COPY ext/pilon pilon
-RUN printf '#!/bin/sh\nexec java -Xmx16G -jar /usr/src/ext/pilon/pilon.jar "$@"\n' \
-    > /usr/local/bin/pilon && \
-    chmod +x /usr/local/bin/pilon
-
 # Install unicycler
 COPY ext/unicycler unicycler
 RUN cd unicycler && \
@@ -144,7 +132,7 @@ RUN cd fastqc && \
     chmod +x fastqc && \
     ln -sft /usr/local/bin /usr/src/ext/fastqc/fastqc
 
-# Install trimmomatic (the weird awk is to force eol on last line of fa)
+# Install trimmomatic (the awk is to force eol on last line of the fa file)
 COPY ext/trimmomatic trimmomatic
 RUN cd trimmomatic && \
     awk 1 adapters/NexteraPE-PE.fa adapters/TruSeq3-PE-2.fa >adapters/default-PE.fa && \

@@ -64,21 +64,18 @@ class UnicyclerExecution(MultiJobExecution):
     def start(self, pairs, req_cpu, req_mem):
 
         mode = self._blackboard.get_user_input('un_m')
-        polish = self._blackboard.get_user_input('un_p')
 
         if self.state == Task.State.STARTED:
             for fid,(r1,r2) in pairs.items():
 
                 params = [
-                    # Need to override SPAdes path, Unicycler requires old version
-                    '--spades_path', '/usr/src/ext/spades-uni/bin/spades.py',
                     #'--spades_tmp_dir', '/tmp', # default is tmp dir in out dir
                     '--threads', req_cpu,
-                    '--min_polish_size', polish,
                     '--mode', mode,
                     '-1', r1,
                     '-2', r2,
                     #'-s', unpaired
+                    #'-l', long
                     '-o', '.'
                 ]
 

@@ -7,12 +7,15 @@ __pycache__
 /ext/*/.git
 /ext/*/data
 /ext/*/test*
+/ext/alga
+/ext/fastp/testdata
 /ext/fastqc/Help
 /ext/interop
 !/ext/interop/bin/summary
 !/ext/interop/bin/index-summary
 /ext/kneaddata/examples
 /ext/kneaddata/tests
+/ext/megahit
 /ext/multiqc/doc
 /ext/multiqc/test
 /ext/ncbi-blast

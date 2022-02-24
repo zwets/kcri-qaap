@@ -114,7 +114,6 @@ per line, in a text file and pass this file with @FILENAME.
 
     group = parser.add_argument_group('Unicycler parameters')
     group.add_argument('--un-m', metavar='MODE', default='normal', help="unicycler mode (conservative, normal, bold)")
-    group.add_argument('--un-p', metavar='SIZE', default=10000, help="polish contigs of SIZE and longer (default 10000)")
 
     # Perform the parsing
     args = parser.parse_args()
