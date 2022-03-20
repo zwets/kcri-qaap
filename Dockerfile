@@ -10,7 +10,7 @@
 # ----------------------------------------------------------------------
 
 # Use miniconda3 (Python 3.9, channel 'defaults' only)
-FROM continuumio/miniconda3:4.10.3p0
+FROM continuumio/miniconda3:4.10.3p1
 
 
 # System dependencies
@@ -29,7 +29,6 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get -qq update --fix-missing && \
     apt-get -qq install apt-utils && \
     dpkg --configure -a && \
-    mkdir /usr/share/man/man1 && \
     apt-get -qq install --no-install-recommends \
         make g++ libz-dev pigz \
         default-jre-headless \
