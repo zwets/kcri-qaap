@@ -10,6 +10,7 @@ __pycache__
 /ext/alga
 /ext/fastp/testdata
 /ext/fastqc/Help
+/ext/flye
 /ext/interop
 !/ext/interop/bin/summary
 !/ext/interop/bin/index-summary
