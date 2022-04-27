@@ -10,7 +10,7 @@
 # ----------------------------------------------------------------------
 
 # Use miniconda3 (Python 3.9, channel 'defaults' only)
-FROM continuumio/miniconda3:4.10.3p1
+FROM continuumio/miniconda3:4.11.0
 
 
 # System dependencies
@@ -108,7 +108,7 @@ RUN cd unicycler && \
 # Make and install skesa
 COPY ext/skesa skesa
 RUN cd skesa && \
-    make clean && make -f Makefile.nongs && \
+    make clean && make -j 6 -f Makefile.nongs && \
     cp skesa /usr/local/bin/ && \
     cd .. && rm -rf skesa
 
