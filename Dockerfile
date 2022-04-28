@@ -103,7 +103,7 @@ ENV PATH=/usr/src/ext/spades/bin:$PATH
 COPY ext/unicycler unicycler
 RUN cd unicycler && \
     python setup.py install && \
-    rm -rf build
+    cd .. && rm -rf unicycler
 
 # Make and install skesa
 COPY ext/skesa skesa
@@ -116,7 +116,7 @@ RUN cd skesa && \
 COPY ext/multiqc multiqc
 RUN cd multiqc && \
     python setup.py install && \
-    rm -rf build
+    cd .. && rm -rf multiqc
 
 # Install fastq-stats
 COPY ext/fastq-utils fastq-utils
@@ -171,7 +171,7 @@ COPY ext/trim-galore/trim_galore /usr/local/bin/
 COPY ext/kneaddata kneaddata
 RUN cd kneaddata && \
     python setup.py install --bypass-dependencies-install && \
-    rm -rf build
+    cd .. && rm -rf kneaddata
 
 
 # Install the QAAP code
