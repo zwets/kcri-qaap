@@ -1,4 +1,9 @@
 TODO
 
+- KneadData: undo the identifier mangling (because we don't recognise as Illumina reads ...)
+  
+    @M02836:47:000000000-JMG44:1:1101:18849:2041:N:0:38#0/1
+    @M02836:47:000000000-JMG44:1:1101:18849:2041 1:N:0:38
+
+- Look at B-assembler: https://github.com/ChongLab/B-assembler
 - Fix the Unicycler breakage (https://github.com/zwets/kcri-qaap/issues/1)
-- KneadData: undo the identifier mangling?

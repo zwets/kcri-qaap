@@ -263,8 +263,8 @@ per line, in a text file and pass this file with @FILENAME.
 
     # Write the qaap-summary.tsv (stub for now)
     with open('qaap-summary.tsv', 'w') as f_tsv:
-        atts = 'n_reads', 'n_bases', 'pct_q30', 'pct_gc', 'n_100k', \
-          'n_seqs', 'tot_len', 'n1', 'n50', 'n75', 'l50', 'l75', 'n_100k', 'pct_gc', 'ign_len', 'n_ign', 'len_ign', 'pct_ign'
+        atts = 'reads', 'bases', 'pct_q30', 'pct_gc', 'pmn_n', \
+          'n_seqs', 'tot_len', 'n1', 'n50', 'n75', 'l50', 'l75', 'pmn_n', 'pct_gc', 'ign_len', 'n_ign', 'len_ign', 'pct_ign'
  
         print('#id\t' + '\t'.join(atts), file=f_tsv)
         for r in 'services/ReadsMetrics/results', 'services/CleanReadsMetrics/results', 'services/ContigsMetrics/results':
