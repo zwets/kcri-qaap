@@ -12,6 +12,8 @@ from .versions import DEPS_VERSIONS
 # Our service name and current backend version
 SERVICE, VERSION = "KneadData", DEPS_VERSIONS['kneaddata']
 
+# Resource parameters per job, see below
+MAX_TIM = None
 
 # The Service class
 class KneadDataShim:
@@ -114,7 +116,7 @@ class KneadDataExecution(MultiJobExecution):
           #--minscore MINSCORE
           #--maxperiod MAXPERIOD
 
-        job_spec = JobSpec('kneaddata', params, cpu, mem, 20*60)
+        job_spec = JobSpec('kneaddata', params, cpu, mem, MAX_TIM)
         self.add_job_spec('pe/%s' % fid, job_spec.as_dict())
         self.add_job('kneaddata-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.sid,fid), (True,fid))
 
@@ -124,7 +126,7 @@ class KneadDataExecution(MultiJobExecution):
         if not self._blackboard.get_user_input('cl_t', False): params.append('--bypass-trf')
         for db in dbs: params += [ '-db', os.path.abspath(db) ]
 
-        job_spec = JobSpec('kneaddata', params, cpu, mem, 60*60)
+        job_spec = JobSpec('kneaddata', params, cpu, mem, MAX_TIM)
         self.add_job_spec('se/%s' % fid, job_spec.as_dict())
         self.add_job('kneaddata-se_%s' % fid, job_spec, '%s/se/%s' % (self.sid,fid), (False,fid))
 

@@ -89,10 +89,10 @@ per line, in a text file and pass this file with @FILENAME.
 
     # Resource management arguments
     group = parser.add_argument_group('Scheduler parameters')
-    group.add_argument('--max-cpus', metavar='N',   type=int, default=None, help="number of CPUs to allocate (default: all but 2)")
+    group.add_argument('--max-cpus', metavar='N',   type=int, default=None, help="number of CPUs to allocate (default: all)")
     group.add_argument('--max-mem',  metavar='GB',  type=int, default=None, help="total memory to allocate (default: 90%%)")
     group.add_argument('--max-time', metavar='SEC', type=int, default=None, help="maximum overall run time (default: unlimited)")
-    group.add_argument('--poll',     metavar='SEC', type=int, default=2, help="seconds between backend polls [2]")
+    group.add_argument('--poll',     metavar='SEC', type=int, default=5, help="seconds between backend polls [5]")
 
     # Service specific arguments
     group = parser.add_argument_group('Trimming parameters')

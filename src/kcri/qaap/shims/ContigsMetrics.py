@@ -15,7 +15,7 @@ SERVICE, VERSION = "ContigsMetrics", DEPS_VERSIONS['unfasta']
 # Resource parameters: cpu, memory, disk, run time reqs
 MAX_CPU = 2
 MAX_MEM = 1
-MAX_TIM = 5 * 60
+MAX_TIM = 10 * 60
 
 
 # The Service class

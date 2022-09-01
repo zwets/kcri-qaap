@@ -79,7 +79,7 @@ class TrimmomaticExecution(MultiJobExecution):
         params.extend([fq1,fq2])
         params.extend(udata[1:])
         params.extend(['ILLUMINACLIP:%s:2:30:10:1:true'%adap,'LEADING:3','TRAILING:3','SLIDINGWINDOW:4:%d'%min_q, 'MINLEN:%d'%min_l])
-        job_spec = JobSpec('trimmomatic', params, cpu, mem, 10*60)
+        job_spec = JobSpec('trimmomatic', params, cpu, mem, 30*60)
         self.store_job_spec(job_spec.as_dict())
         self.add_job('trimmomatic-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.sid,fid), udata)
 

@@ -14,7 +14,7 @@ from .versions import DEPS_VERSIONS
 SERVICE, VERSION = "Unicycler", DEPS_VERSIONS['unicycler']
 
 # Resource parameters per job, see below
-MAX_TIM = 60*60
+MAX_TIM = None
 
 
 # The Service class

@@ -37,7 +37,7 @@ class FastQCShim:
             max_par = int(task._scheduler.max_mem * 4)    # each thread needs 250MB
             cpu = min(task._scheduler.max_cpu, len(fastqs), max_par)
             mem = cpu / 4               # each job 250M
-            tim = n_fq / cpu * 5 * 60   # each job at most 5 min
+            tim = n_fq / cpu * 15 * 60   # each job at most 15 min
 
             # Set up parameters
             params = [

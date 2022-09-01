@@ -15,7 +15,7 @@ SERVICE, VERSION = "Quast", DEPS_VERSIONS['quast']
 # Backend resource parameters: cpu, memory, disk, run time reqs
 #MAX_CPU = -1 # all
 MAX_MEM = 12
-MAX_TIM = 20 * 60
+MAX_TIM = None
 
 
 class QuastShim:

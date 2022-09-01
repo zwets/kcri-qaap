@@ -84,7 +84,7 @@ class TrimGaloreExecution(MultiJobExecution):
             '--stringency', self.min_o, '--trim-n', '--basename', fid,
             fq1, fq2 ]
 
-        job_spec = JobSpec('trim_galore', params, cpu, mem, 5*60)
+        job_spec = JobSpec('trim_galore', params, cpu, mem, 15*60)
         self.add_job_spec('pe/%s' % fid, job_spec.as_dict())
         self.add_job('trim_galore-pe_%s' % fid, job_spec, '%s/pe/%s' % (self.sid,fid), (True,fid))
 

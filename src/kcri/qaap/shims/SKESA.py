@@ -14,7 +14,7 @@ from .versions import DEPS_VERSIONS
 SERVICE, VERSION = "SKESA", DEPS_VERSIONS['skesa']
 
 # Resource parameters per job, see below
-MAX_TIM = 15 * 60
+MAX_TIM = None
 
 # Output file ex work dir
 CONTIGS_OUT = 'contigs.fna'
