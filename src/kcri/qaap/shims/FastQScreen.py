@@ -44,6 +44,7 @@ class FastQScreenShim:
             # Set up parameters
             params = [
                 '--conf', '@PLACEHOLDER@',
+                '--subset', 0,
                 '--outdir', '.',
                 '--force',
                 '--quiet',
